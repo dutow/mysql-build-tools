@@ -1,0 +1,49 @@
+
+from MbtConfig import MbtConfig
+
+DEFAULT_COMPILERS = {
+        "gcc": {"CC": "gcc", "CXX": "g++"},
+        "clang4": {"CC": "clang-4.0", "CXX": "clang++-4.0"},
+        "clang5": {"CC": "clang-5.0", "CXX": "clang++-5.0"},
+        "clang6": {"CC": "clang-6.0", "CXX": "clang++-6.0"}
+        }
+
+VARIANTS = {
+        "debug": "Debug",
+        "release": "Release",
+        "reldebinfo": "RelWithDebInfo"
+        }
+
+
+def configure_mbt():
+    conf = MbtConfig()
+
+    conf.set_user("Zsolt Parragi", "zsolt.parragi@percona.com")
+
+    conf.add_remote("origin", "git@github.com:dutow/percona-server.git")
+    conf.add_remote("percona", "git@github.com:percona/percona-server.git")
+    conf.add_remote("mysql", "https://github.com/mysql/mysql-server.git")
+
+    conf.add_version("5.5")
+    conf.add_version("5.6")
+    conf.add_version("5.7")
+
+    for comp_name, comp_env in DEFAULT_COMPILERS.items():
+        for variant_name, variant_type in VARIANTS.items():
+            conf.add_build_config("artful-"+variant_name+"-"+comp_name,
+                                  "mbt-ubuntu-artful",
+                                  comp_env,
+                                  {
+                                      "WITH_EMBEDDED_SERVER": "OFF",
+                                      "FEATURE_SET": "community",
+                                      "BUILD_CONFIG": "mysql_release",
+                                      "MYSQL_MAINTAINER_MODE": "ON",
+                                      "CMAKE_BUILD_TYPE": variant_type,
+                                      "WITH_ZLIB": "system",
+                                      "WITH_SSL": "system",
+                                      "ENABLE_DTRACE": "OFF",
+                                      "DOWNLOAD_BOOST": "1",
+                                      "WITH_BOOST": "dep-boost"
+                                  })
+
+    return conf
