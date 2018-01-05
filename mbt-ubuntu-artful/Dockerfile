@@ -5,11 +5,20 @@
 FROM ubuntu:17.10
 MAINTAINER Zsolt Parragi <zsolt.parragi@cancellar.hu>
 
-RUN \
+RUN DEBIAN_FRONTEND=noninteractive\
+    apt-get update && \
+    apt-get install -y software-properties-common wget && \
+    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add && \
+    apt-add-repository "deb http://apt.llvm.org/artful/ llvm-toolchain-artful main" && \
     apt-get update && \
     apt-get -y upgrade && \
-    apt-get install -y curl subversion libncurses5-dev libssl-dev libaio-dev libreadline-dev build-essential bison git cmake ninja-build systemtap-sdt-dev eatmydata subunit python-mysqldb libjson-perl devscripts debconf debhelper fakeroot libmecab-dev lsb-release perl po-debconf psmisc zlib1g-dev libpam-dev libssl-dev libnuma-dev libwrap0-dev libldap2-dev dh-systemd gdb libprotobuf-dev protobuf-compiler && \
-    apt-get install -y clang clang-5.0 lldb-4.0 && \
+    apt-get install -y clang-4.0 clang-5.0 clang-6.0 build-essential git cmake ninja-build bison gdb lldb \
+            libncurses5-dev libssl-dev libaio-dev libreadline-dev systemtap-sdt-dev libmecab-dev \
+            zlib1g-dev libpam-dev libnuma-dev libwrap0-dev libldap2-dev \
+            libprotobuf-dev protobuf-compiler \
+            curl subversion git \
+            eatmydata subunit python-mysqldb libjson-perl devscripts debconf debhelper fakeroot \
+            lsb-release perl po-debconf psmisc dh-systemd &&\ 
     rm -rf /var/lib/apt/lists/* 
 
 # FixUID
@@ -38,7 +47,7 @@ RUN mkdir /work/libcxx-msan-trunk/ && \
     (cd llvm/projects && svn co http://llvm.org/svn/llvm-project/libcxx/trunk libcxx) && \
     (cd llvm/projects && svn co http://llvm.org/svn/llvm-project/libcxxabi/trunk libcxxabi) && \
     mkdir -p build && cd build && \
-    CC=clang CXX=clang++ cmake ../llvm -DCMAKE_INSTALL_PREFIX=.. -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_SANITIZER=Memory && \
+    CC=clang-4.0 CXX=clang++-4.0 cmake ../llvm -DCMAKE_INSTALL_PREFIX=.. -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_SANITIZER=Memory && \
     make install-libcxx install-libcxxabi
 
 ENTRYPOINT ["fixuid"]
