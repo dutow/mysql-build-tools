@@ -85,4 +85,15 @@ Any argument can be specified to make, e.g. targets, `-j`, `VERBOSE=1`, ...
 ./mbt mtr <topic> <version> <preset> [additional args...]
 ```
 
+### Cleaning up old branches
+
+```
+./mbt cleanup [--force]
+```
+
+Prunes worktrees and removes branches that aren't checked out.
+The `--force` option removes brances even when they have non merged changes.
+
+Note that change detection looks buggy with git worktrees, so if the command reports that a branch has underged changes,
+it could be a false positive.
 Any argument can be specified to mtr, e.g. `--parallel=auto`, `--force`, ...

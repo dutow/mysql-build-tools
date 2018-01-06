@@ -140,6 +140,21 @@ def test_with_mtr(conf, topic, version, preset, add_argv):
                              ["./mtr"] + add_argv)
 
 
+def cleanup_repo(conf, force=False):
+    # For some reason branch deletion doesn't work from the empty master
+    repo = git.Repo("versions/"+conf.versions[0])
+    repo.git.worktree("prune")
+    for br in repo.heads:
+        try:
+            deleter = "-D" if force else "-d"
+            repo.git.branch(deleter, br.name)
+            print("Removed branch: " + br.name)
+        except git.exc.GitCommandError as e:
+            if "checked out at" not in e.stderr:
+                print(e)
+            pass
+
+
 conf = import_config()
 repo = repo_object(conf)
 
@@ -160,3 +175,6 @@ if sys.argv[1] == "make":
 
 if sys.argv[1] == "mtr":
     test_with_mtr(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5:])
+
+if sys.argv[1] == "cleanup":
+    cleanup_repo(conf, len(sys.argv) >= 3 and sys.argv[2] == "--force")
