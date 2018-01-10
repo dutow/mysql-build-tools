@@ -16,7 +16,7 @@ RUN DEBIAN_FRONTEND=noninteractive\
             libncurses5-dev libssl-dev libaio-dev libreadline-dev systemtap-sdt-dev libmecab-dev \
             zlib1g-dev libpam-dev libnuma-dev libwrap0-dev libldap2-dev \
             libprotobuf-dev protobuf-compiler \
-            curl subversion git \
+            curl subversion git xterm\
             eatmydata subunit python-mysqldb libjson-perl devscripts debconf debhelper fakeroot \
             lsb-release perl po-debconf psmisc dh-systemd &&\ 
     rm -rf /var/lib/apt/lists/* 

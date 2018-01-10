@@ -58,7 +58,7 @@ def run_docker_command(img, volumes, work_dir, env, args):
 
     def proc_volume_arg(v):
         curr_dir = os.getcwd()
-        a = v.split(":")
+        a = v.split(":", 1)
         if len(a) == 1:
             a.append(a[0])
         if a[0][0] != '/':
@@ -71,7 +71,8 @@ def run_docker_command(img, volumes, work_dir, env, args):
     def proc_env_arg(v):
         return ["-e", v[0]+"="+v[1]]
 
-    env = sum(list(map(proc_env_arg, env.items())), [])
+    base_env = {"DISPLAY": os.environ["DISPLAY"]}
+    env = sum(list(map(proc_env_arg, {**env, **base_env}.items())), [])
 
     docker_args = (["/urs/bin/docker", "run", "--privileged", "--rm", "-it"]
                    + volumes
@@ -99,6 +100,8 @@ def run_docker_build_command(conf, topic, version, preset, work_dir, args):
 
     volumes = [src_dir+":src",
                build_dir+":build",
+               # Required for debugging on the host X
+               "/tmp/.X11-unix:/tmp/.X11-unix:ro",
                # Required for git subtree to work correctly,
                # as it uses absolute paths, and needs the master dir
                os.path.join(os.getcwd(), "master")]
