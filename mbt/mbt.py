@@ -92,14 +92,19 @@ def run_docker_command(img, volumes, work_dir, env, args):
 def run_docker_build_command(conf, topic, version, preset, work_dir, args):
     src_dir = os.path.join("topics", topic, version)
     build_dir = os.path.join("topics", topic, version+"-"+preset)
+    install_dir = os.path.join("topics", topic, version+"-"+preset+"-inst")
 
     if not os.path.isdir(build_dir):
         os.mkdir(build_dir)
+
+    if not os.path.isdir(install_dir):
+        os.mkdir(install_dir)
 
     buildconf = conf.build_configs[preset]
 
     volumes = [src_dir+":src",
                build_dir+":build",
+               install_dir+":install",
                # Required for debugging on the host X
                "/tmp/.X11-unix:/tmp/.X11-unix:ro",
                # Required for git subtree to work correctly,
@@ -134,7 +139,9 @@ def build_with_make(conf, topic, version, preset, add_argv):
 
 def delete_build(conf, topic, version, preset):
     build_dir = os.path.join("topics", topic, version+"-"+preset)
+    install_dir = os.path.join("topics", topic, version+"-"+preset+"-inst")
     shutil.rmtree(build_dir)
+    shutil.rmtree(install_dir)
 
 
 def test_with_mtr(conf, topic, version, preset, add_argv):
