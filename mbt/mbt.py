@@ -31,7 +31,7 @@ def add_worktree(repo, loc, branch, ref):
             sm.update("--init", "--recursive")
 
 
-def init_mbt(repo):
+def init_mbt(conf, repo):
     with repo.config_writer() as cw:
         if conf.user_name:
             if not cw.has_section("user"):
@@ -42,10 +42,20 @@ def init_mbt(repo):
                 cw.add_section("user")
             cw.set("user", "email", conf.user_email)
         pass
+    print("Adding remotes...")
     for name, url in conf.remotes.items():
-        print("Adding remote '" + name + "': " + url)
-        ref = repo.create_remote(name, url)
-        ref.fetch()
+        print("Adding/updating remote '" + name + "': " + url)
+        try:
+            repo.create_remote(name, url)
+        except Exception:
+            pass
+        repo.remotes[name].fetch()
+    print("Checking out versions...")
+    for ver in conf.versions:
+        print(ver+"...")
+        if not os.path.isdir("versions/"+ver):
+            add_worktree(repo, "versions/"+ver, ver, "origin/"+ver)
+
 
 
 def create_topic(repo, name, versions):
@@ -169,7 +179,7 @@ conf = import_config()
 repo = repo_object(conf)
 
 if sys.argv[1] == "init":
-    init_mbt(repo)
+    init_mbt(conf, repo)
 
 if sys.argv[1] == "create-topic":
     create_topic(repo, sys.argv[2], conf.versions)

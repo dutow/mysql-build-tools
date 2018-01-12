@@ -39,10 +39,14 @@ Planned features
 * Providing a better console command (e.g. working directory awareness)
 * Providing a console
 
-Installation
+Quick start
 ---
 
-TODO
+```bash
+\curl -sSL https://raw.githubusercontent.com/dutow/mysql-build-tools/master/install.sh | bash -s
+cp mysql-build-tools/config.py.sample config.py
+./mbt init
+```
 
 Usage
 ---
