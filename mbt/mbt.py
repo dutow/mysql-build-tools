@@ -3,6 +3,22 @@ import git
 import sys
 import os
 import shutil
+import subprocess
+import signal
+
+active_procs = []
+
+
+def close_procs(s, f):
+    for pid in active_procs:
+        print("Killing " + str(pid))
+        # using SIGTERM as a docker workaround for now
+        # Needs refactoing and docker stop
+        os.kill(pid, signal.SIGTERM)
+    sys.exit(0)
+
+
+signal.signal(signal.SIGINT, close_procs)
 
 
 def import_config():
@@ -57,14 +73,30 @@ def init_mbt(conf, repo):
             add_worktree(repo, "versions/"+ver, ver, "origin/"+ver)
 
 
-
 def create_topic(repo, name, versions):
     for ver in versions:
         branch = "ps-"+ver+"-"+name
         add_worktree(repo, "topics/"+name+"/"+ver, branch, ver)
 
 
-def run_docker_command(img, volumes, work_dir, env, args):
+def run_command(args, replace_curr):
+    print(args)
+    if replace_curr:
+        os.execvp(args[0], args)
+    else:
+        cmd = subprocess.Popen(args,
+                               stdout=subprocess.PIPE,
+                               universal_newlines=True)
+        pid = cmd.pid
+        active_procs.append(pid)
+        while cmd.poll() is None:
+            sys.stdout.write(cmd.stdout.readline())
+        sys.stdout.write(cmd.stdout.read())
+        active_procs.remove(pid)
+
+
+def run_docker_command(img, volumes, work_dir, env, args, replace_curr=True,
+                       docker_args=[]):
 
     def proc_volume_arg(v):
         curr_dir = os.getcwd()
@@ -84,37 +116,29 @@ def run_docker_command(img, volumes, work_dir, env, args):
     base_env = {"DISPLAY": os.environ["DISPLAY"]}
     env = sum(list(map(proc_env_arg, {**env, **base_env}.items())), [])
 
-    docker_args = (["/urs/bin/docker", "run", "--privileged", "--rm", "-it"]
+    docker_args = (["/usr/bin/docker", "run", "--privileged", "--rm", "-i"]
                    + volumes
                    + env
                    + ["-w", work_dir]
+                   + docker_args
                    + [img]
                    + args
                    )
 
-    print(docker_args)
-
-    os.execvp("/usr/bin/docker",
-              docker_args
-              )
+    run_command(docker_args, replace_curr)
 
 
 def run_docker_build_command(conf, topic, version, preset, work_dir, args):
     src_dir = os.path.join("topics", topic, version)
     build_dir = os.path.join("topics", topic, version+"-"+preset)
-    install_dir = os.path.join("topics", topic, version+"-"+preset+"-inst")
 
     if not os.path.isdir(build_dir):
         os.mkdir(build_dir)
-
-    if not os.path.isdir(install_dir):
-        os.mkdir(install_dir)
 
     buildconf = conf.build_configs[preset]
 
     volumes = [src_dir+":src",
                build_dir+":build",
-               install_dir+":install",
                # Required for debugging on the host X
                "/tmp/.X11-unix:/tmp/.X11-unix:ro",
                # Required for git subtree to work correctly,
@@ -127,6 +151,120 @@ def run_docker_build_command(conf, topic, version, preset, work_dir, args):
             work_dir,
             buildconf["environment"],
             args
+            )
+
+
+def run_installed_command(conf, topic, version, preset, install_tag, cmd,
+                          docker_args=[]):
+    src_dir = os.path.join("topics", topic, version)
+    install_dir = os.path.join("topics", topic,
+                               version+"-"+preset+"-inst"+"-"+install_tag)
+
+    buildconf = conf.build_configs[preset]
+
+    volumes = [src_dir+":src",
+               install_dir+":install",
+               # Required for debugging on the host X
+               "/tmp/.X11-unix:/tmp/.X11-unix:ro",
+               # Required for git subtree to work correctly,
+               # as it uses absolute paths, and needs the master dir
+               os.path.join(os.getcwd(), "master")]
+
+    run_docker_command(
+            buildconf["image"],
+            volumes,
+            "/work/install",
+            buildconf["environment"],
+            cmd,
+            False,
+            docker_args
+            )
+
+
+def install_build(conf, topic, version, preset, tag, args):
+    src_dir = os.path.join("topics", topic, version)
+    build_dir = os.path.join("topics", topic, version+"-"+preset)
+    install_dir = os.path.join("topics", topic,
+                               version+"-"+preset+"-inst"+"-"+tag)
+
+    if not os.path.isdir(install_dir):
+        os.mkdir(install_dir)
+        os.mkdir(os.path.join(install_dir, "etc"))
+        os.mkdir(os.path.join(install_dir, "var"))
+        os.mkdir(os.path.join(install_dir, "tmp"))
+
+    my_cnf_content = """
+[client]
+port=10000
+socket=/work/install/var/mysql.sock
+user=root
+[mysqld]
+basedir=/work/install/
+datadir=/work/install/data
+tmpdir=/work/install/tmp
+port=10000
+socket=/work/install/var/mysql.sock
+pid-file=/work/install/var/mysql.pid
+console
+server-id=1
+max_connections=1000
+    """
+
+    config = open(os.path.join(install_dir, "etc", "my.cnf"), "w")
+    config.write(my_cnf_content)
+    config.close()
+
+    buildconf = conf.build_configs[preset]
+
+    volumes = [src_dir+":src",
+               build_dir+":build",
+               install_dir+":install",
+               # Required for git subtree to work correctly,
+               # as it uses absolute paths, and needs the master dir
+               os.path.join(os.getcwd(), "master")]
+
+    run_docker_command(
+            buildconf["image"],
+            volumes,
+            "/work/build",
+            buildconf["environment"],
+            ["make", "install"],
+            False
+            )
+
+    if version == "5.7":
+        init_cmd = ["./bin/mysqld",
+                    "--defaults-file=/work/install/etc/my.cnf",
+                    "--initialize-insecure",
+                    ]
+    else:
+        init_cmd = ["./scripts/mysql_install_db",
+                    "--defaults-file=/work/install/etc/my.cnf",
+                    ]
+
+    run_installed_command(
+            conf,
+            topic,
+            version,
+            preset,
+            tag,
+            init_cmd
+            )
+
+
+def run_mysqld(conf, topic, version, preset, tag, args):
+    run_installed_command(
+            conf,
+            topic,
+            version,
+            preset,
+            tag,
+            ["./bin/mysqld",
+             "--defaults-file=/work/install/etc/my.cnf",
+             ] + args,
+            ["--expose=10000",
+             "-p=10000:10000",
+             "--name", "mysqld-"+topic+"-"+version+"-"+preset+"-"+tag]
             )
 
 
@@ -149,9 +287,7 @@ def build_with_make(conf, topic, version, preset, add_argv):
 
 def delete_build(conf, topic, version, preset):
     build_dir = os.path.join("topics", topic, version+"-"+preset)
-    install_dir = os.path.join("topics", topic, version+"-"+preset+"-inst")
     shutil.rmtree(build_dir)
-    shutil.rmtree(install_dir)
 
 
 def test_with_mtr(conf, topic, version, preset, add_argv):
@@ -192,6 +328,14 @@ if sys.argv[1] == "delete-build":
 
 if sys.argv[1] == "make":
     build_with_make(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5:])
+
+if sys.argv[1] == "install":
+    install_build(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], 
+                  sys.argv[6:])
+
+if sys.argv[1] == "run-mysqld":
+    run_mysqld(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], 
+               sys.argv[6:])
 
 if sys.argv[1] == "mtr":
     test_with_mtr(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5:])
