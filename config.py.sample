@@ -14,10 +14,11 @@ VARIANTS = {
         "reldebinfo": "RelWithDebInfo"
         }
 
+DISTROS = ["zesty", "artful"]
+
 
 def base_config(variant_type):
     return {
-            "WITH_EMBEDDED_SERVER": "OFF",
             "FEATURE_SET": "community",
             "BUILD_CONFIG": "mysql_release",
             "MYSQL_MAINTAINER_MODE": "ON",
@@ -27,7 +28,8 @@ def base_config(variant_type):
             "WITH_SSL": "system",
             "ENABLE_DTRACE": "OFF",
             "DOWNLOAD_BOOST": "1",
-            "WITH_BOOST": "dep-boost"
+            "WITH_BOOST": "dep-boost",
+            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
             }
 
 
@@ -44,24 +46,25 @@ def configure_mbt():
     conf.add_version("5.6")
     conf.add_version("5.7")
 
-    for comp_name, comp_env in DEFAULT_COMPILERS.items():
-        for variant_name, variant_type in VARIANTS.items():
-            base_conf = base_config(variant_name)
-            conf.add_build_config("artful-"+variant_name+"-"+comp_name,
-                                  "mbt-ubuntu-artful",
-                                  comp_env,
-                                  base_conf
-                                  )
-            if "clang" in comp_name:
-                conf.add_build_config(
-                        "artful-"+variant_name+"-"+comp_name+"-msan",
-                        "mbt-ubuntu-artful-msan",
-                        comp_env,
-                        {**base_conf,
-                            "WITH_SSL": "bundled",
-                            "WITH_ZLIB": "bundled",
-                            "WITH_MSAN": "ON",
-                            "MYSQL_MAINTAINER_MODE": "OFF"
-                         })
+    for distro in DISTROS:
+        for comp_name, comp_env in DEFAULT_COMPILERS.items():
+            for variant_name, variant_type in VARIANTS.items():
+                base_conf = base_config(variant_type)
+                conf.add_build_config(distro+"-"+variant_name+"-"+comp_name,
+                                      "dutow/mbt-ubuntu-"+distro,
+                                      comp_env,
+                                      base_conf
+                                      )
+                if "clang" in comp_name:
+                    conf.add_build_config(
+                            distro+"-"+variant_name+"-"+comp_name+"-msan",
+                            "dutow/mbt-ubuntu-"+distro+"-msan",
+                            comp_env,
+                            {**base_conf,
+                                "WITH_SSL": "bundled",
+                                "WITH_ZLIB": "bundled",
+                                "WITH_MSAN": "ON",
+                                "MYSQL_MAINTAINER_MODE": "OFF"
+                             })
 
     return conf
