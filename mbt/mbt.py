@@ -95,6 +95,19 @@ def run_command(args, replace_curr):
         active_procs.remove(pid)
 
 
+def exec_docker_command(container, cmd, replace_curr=True, docker_args=[]):
+    if replace_curr:
+        docker_args += ["-t"]
+
+    docker_args = (["/usr/bin/docker", "exec", "--privileged", "-i"]
+                   + docker_args
+                   + [container]
+                   + cmd
+                   )
+
+    run_command(docker_args, replace_curr)
+
+
 def run_docker_command(img, volumes, work_dir, env, args, replace_curr=True,
                        docker_args=[]):
 
@@ -116,11 +129,15 @@ def run_docker_command(img, volumes, work_dir, env, args, replace_curr=True,
     base_env = {"DISPLAY": os.environ["DISPLAY"]}
     env = sum(list(map(proc_env_arg, {**env, **base_env}.items())), [])
 
+    if replace_curr:
+        docker_args += ["-t"]
+
     docker_args = (["/usr/bin/docker", "run", "--privileged", "--rm", "-i"]
                    + volumes
                    + env
                    + ["-w", work_dir]
                    + docker_args
+                   + ["--network", "mbt"]
                    + [img]
                    + args
                    )
@@ -181,6 +198,18 @@ def run_installed_command(conf, topic, version, preset, install_tag, cmd,
             )
 
 
+def exec_installed_command(conf, topic, version, preset, install_tag, cmd,
+                           replace_current=True, docker_args=[]):
+    install_name = "mysqld-" + topic + "-" + version+"-"+preset+"-"+install_tag
+
+    exec_docker_command(
+            install_name,
+            cmd,
+            replace_current,
+            docker_args,
+            )
+
+
 def install_build(conf, topic, version, preset, tag, args):
     src_dir = os.path.join("topics", topic, version)
     build_dir = os.path.join("topics", topic, version+"-"+preset)
@@ -193,7 +222,10 @@ def install_build(conf, topic, version, preset, tag, args):
         os.mkdir(os.path.join(install_dir, "var"))
         os.mkdir(os.path.join(install_dir, "tmp"))
 
-    my_cnf_content = """
+    config_file = os.path.join(install_dir, "etc", "my.cnf")
+    if not os.path.isfile(config_file):
+
+        my_cnf_content = """
 [client]
 port=10000
 socket=/work/install/var/mysql.sock
@@ -208,11 +240,11 @@ pid-file=/work/install/var/mysql.pid
 console
 server-id=1
 max_connections=1000
-    """
+        """
 
-    config = open(os.path.join(install_dir, "etc", "my.cnf"), "w")
-    config.write(my_cnf_content)
-    config.close()
+        config = open(os.path.join(install_dir, "etc", "my.cnf"), "w")
+        config.write(my_cnf_content)
+        config.close()
 
     buildconf = conf.build_configs[preset]
 
@@ -232,24 +264,26 @@ max_connections=1000
             False
             )
 
-    if version == "5.7":
-        init_cmd = ["./bin/mysqld",
-                    "--defaults-file=/work/install/etc/my.cnf",
-                    "--initialize-insecure",
-                    ]
-    else:
-        init_cmd = ["./scripts/mysql_install_db",
-                    "--defaults-file=/work/install/etc/my.cnf",
-                    ]
+    if "--init" in args:
 
-    run_installed_command(
-            conf,
-            topic,
-            version,
-            preset,
-            tag,
-            init_cmd
-            )
+        if version == "5.7":
+            init_cmd = ["./bin/mysqld-debug",
+                        "--defaults-file=/work/install/etc/my.cnf",
+                        "--initialize-insecure",
+                        ]
+        else:
+            init_cmd = ["./scripts/mysql_install_db",
+                        "--defaults-file=/work/install/etc/my.cnf",
+                        ]
+
+        run_installed_command(
+                conf,
+                topic,
+                version,
+                preset,
+                tag,
+                init_cmd
+                )
 
 
 def run_mysqld(conf, topic, version, preset, tag, args):
@@ -259,12 +293,38 @@ def run_mysqld(conf, topic, version, preset, tag, args):
             version,
             preset,
             tag,
-            ["./bin/mysqld",
+            ["./bin/mysqld-debug",
              "--defaults-file=/work/install/etc/my.cnf",
              ] + args,
             ["--expose=10000",
              "-p=10000:10000",
-             "--name", "mysqld-"+topic+"-"+version+"-"+preset+"-"+tag]
+             "--name", "mysqld-"+topic+"-"+version+"-"+preset+"-"+tag,
+             "--cpus=1"]
+            )
+
+
+def run_local_mysql(conf, topic, version, preset, tag, args):
+    exec_installed_command(
+            conf,
+            topic,
+            version,
+            preset,
+            tag,
+            ["./bin/mysql",
+             "--defaults-file=/work/install/etc/my.cnf",
+             ] + args
+            )
+
+
+def run_local_bash(conf, topic, version, preset, tag, args):
+    exec_installed_command(
+            conf,
+            topic,
+            version,
+            preset,
+            tag,
+            ["/bin/bash",
+             ] + args
             )
 
 
@@ -330,12 +390,20 @@ if sys.argv[1] == "make":
     build_with_make(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5:])
 
 if sys.argv[1] == "install":
-    install_build(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], 
+    install_build(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],
                   sys.argv[6:])
 
 if sys.argv[1] == "run-mysqld":
-    run_mysqld(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], 
+    run_mysqld(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],
                sys.argv[6:])
+
+if sys.argv[1] == "run-mysql-cmd":
+    run_local_mysql(conf, sys.argv[2], sys.argv[3], sys.argv[4],
+                    sys.argv[5], sys.argv[6:])
+
+if sys.argv[1] == "run-bash":
+    run_local_bash(conf, sys.argv[2], sys.argv[3], sys.argv[4],
+                   sys.argv[5], sys.argv[6:])
 
 if sys.argv[1] == "mtr":
     test_with_mtr(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5:])
