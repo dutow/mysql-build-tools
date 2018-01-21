@@ -1,6 +1,8 @@
 MySQL Build Tools
 ===
 
+[![Build Status](https://travis-ci.org/dutow/mysql-build-tools.svg?branch=master)](https://travis-ci.org/dutow/mysql-build-tools)
+
 Building and testing MySQL is challanging for several reasons:
 
 * There are multiple upstreams (MySQL, Percona, developer forks)
