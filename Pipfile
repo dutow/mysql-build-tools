@@ -9,6 +9,8 @@ verify_ssl = true
 
 pytest = "*"
 pytest-mock = "*"
+pycodestyle = "*"
+"flake8" = "*"
 
 
 [packages]

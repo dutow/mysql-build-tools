@@ -1,7 +1,7 @@
 
 class MbtConfigurator:
     def __init__(self):
-        self.username = None
+        self.user_name = None
         self.user_email = None
         self.remotes = {}
         self.series = []
@@ -17,12 +17,16 @@ class MbtConfigurator:
         self.user_name = name
         self.user_email = email
 
-    def add_build_config(self, name, image, environment={}, config={}):
+    def add_build_config(self, name, image, environment=None, config=None):
+        if environment is None:
+            environment = {}
+        if config is None:
+            config = {}
         self.build_configs[name] = {
-                "image": image,
-                "environment": environment,
-                "config": config
-                }
+            "image": image,
+            "environment": environment,
+            "config": config
+            }
 
     def has_series(self, version):
         return version in self.series

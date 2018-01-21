@@ -103,10 +103,10 @@ def exec_docker_command(container, cmd, replace_curr=True, docker_args=[]):
     if replace_curr:
         docker_args += ["-t"]
 
-    docker_args = (["/usr/bin/docker", "exec", "--privileged", "-i"]
-                   + docker_args
-                   + [container]
-                   + cmd
+    docker_args = (["/usr/bin/docker", "exec", "--privileged", "-i"] +
+                   docker_args +
+                   [container] +
+                   cmd
                    )
 
     run_command(docker_args, replace_curr)
@@ -136,14 +136,14 @@ def run_docker_command(img, volumes, work_dir, env, args, replace_curr=True,
     if replace_curr:
         docker_args += ["-t"]
 
-    docker_args = (["/usr/bin/docker", "run", "--privileged", "--rm", "-i"]
-                   + volumes
-                   + env
-                   + ["-w", work_dir]
-                   + docker_args
-                   + ["--network", "mbt"]
-                   + [img]
-                   + args
+    docker_args = (["/usr/bin/docker", "run", "--privileged", "--rm", "-i"] +
+                   volumes +
+                   env +
+                   ["-w", work_dir] +
+                   docker_args +
+                   ["--network", "mbt"] +
+                   [img] +
+                   args
                    )
 
     run_command(docker_args, replace_curr)

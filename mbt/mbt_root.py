@@ -18,8 +18,8 @@ class MbtRoot:
 
         Throws an IOExcpetion on failure.
         """
-        self.config_location = (config_location
-                                or MbtRoot.lookup_config_location(getcwd()))
+        self.config_location = (config_location or
+                                MbtRoot.lookup_config_location(getcwd()))
 
         if not MbtRoot.validate_config_location(self.config_location):
             raise IOError(ENOENT,
