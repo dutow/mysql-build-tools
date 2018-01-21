@@ -1,5 +1,5 @@
 
-from MbtConfig import MbtConfig
+from mbt_configurator import MbtConfigurator
 
 DEFAULT_COMPILERS = {
         "gcc": {"CC": "gcc", "CXX": "g++"},
@@ -34,7 +34,7 @@ def base_config(variant_type):
 
 
 def configure_mbt():
-    conf = MbtConfig()
+    conf = MbtConfigurator()
 
     conf.set_user("Zsolt Parragi", "zsolt.parragi@percona.com")
 
@@ -42,9 +42,9 @@ def configure_mbt():
     conf.add_remote("percona", "git@github.com:percona/percona-server.git")
     conf.add_remote("mysql", "https://github.com/mysql/mysql-server.git")
 
-    conf.add_version("5.5")
-    conf.add_version("5.6")
-    conf.add_version("5.7")
+    conf.add_series("5.5")
+    conf.add_series("5.6")
+    conf.add_series("5.7")
 
     for distro in DISTROS:
         for comp_name, comp_env in DEFAULT_COMPILERS.items():

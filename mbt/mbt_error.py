@@ -1,0 +1,3 @@
+
+class MbtError(Exception):
+    pass

@@ -6,6 +6,10 @@ import shutil
 import subprocess
 import signal
 
+from .mbt_root import MbtRoot
+from .mbt_params import MbtParams
+from .directory_context import DirectoryContext
+
 active_procs = []
 
 
@@ -21,9 +25,9 @@ def close_procs(s, f):
 signal.signal(signal.SIGINT, close_procs)
 
 
-def import_config():
-    sys.path.append(os.getcwd())
-    from config import configure_mbt
+def import_config(root):
+    sys.path.append(root.root_dir())
+    from mbt_config import configure_mbt
     return configure_mbt()
 
 
@@ -66,8 +70,8 @@ def init_mbt(conf, repo):
         except Exception:
             pass
         repo.remotes[name].fetch()
-    print("Checking out versions...")
-    for ver in conf.versions:
+    print("Checking out series...")
+    for ver in conf.series:
         print(ver+"...")
         if not os.path.isdir("versions/"+ver):
             add_worktree(repo, "versions/"+ver, ver, "origin/"+ver)
@@ -328,15 +332,24 @@ def run_local_bash(conf, topic, version, preset, tag, args):
             )
 
 
-def create_build(conf, topic, version, preset):
-    buildconf = conf.build_configs[preset]
+def create_build(params, args):
+    params.add_topic_arg()
+    params.add_series_arg()
+    params.add_variant_arg()
+    ctx = params.parse(args)
+
+    buildconf = params.config.build_configs[ctx.variant]
 
     def proc_cmake_arg(v):
         return "-D"+v[0] + "=" + v[1]
 
     cmake_args = list(map(proc_cmake_arg, buildconf["config"].items()))
 
-    run_docker_build_command(conf, topic, version, preset, "/work/build",
+    run_docker_build_command(params.config,
+                             ctx.topic,
+                             ctx.series,
+                             ctx.variant,
+                             "/work/build",
                              ["cmake", "../src"] + cmake_args)
 
 
@@ -345,8 +358,13 @@ def build_with_make(conf, topic, version, preset, add_argv):
                              ["make"] + add_argv)
 
 
-def delete_build(conf, topic, version, preset):
-    build_dir = os.path.join("topics", topic, version+"-"+preset)
+def delete_build(params, args):
+    params.add_topic_arg()
+    params.add_series_arg()
+    params.add_variant_arg()
+    ctx = params.parse(args)
+
+    build_dir = os.path.join("topics", ctx.topic, ctx.series+"-"+ctx.variant)
     shutil.rmtree(build_dir)
 
 
@@ -358,7 +376,7 @@ def test_with_mtr(conf, topic, version, preset, add_argv):
 
 def cleanup_repo(conf, force=False):
     # For some reason branch deletion doesn't work from the empty master
-    repo = git.Repo("versions/"+conf.versions[0])
+    repo = git.Repo("versions/"+conf.series[0])
     repo.git.worktree("prune")
     for br in repo.heads:
         try:
@@ -371,42 +389,49 @@ def cleanup_repo(conf, force=False):
             pass
 
 
-conf = import_config()
-repo = repo_object(conf)
+def mbt_command():
+    root = MbtRoot()
+    conf = import_config(root)
+    ctx = DirectoryContext(conf, root.root_dir(), os.getcwd())
+    params = MbtParams(conf, ctx, prog_name="mbt " + sys.argv[1])
 
-if sys.argv[1] == "init":
-    init_mbt(conf, repo)
+    repo = repo_object(conf)
 
-if sys.argv[1] == "create-topic":
-    create_topic(repo, sys.argv[2], conf.versions)
+    if sys.argv[1] == "init":
+        init_mbt(conf, repo)
 
-if sys.argv[1] == "create-build":
-    create_build(conf, sys.argv[2], sys.argv[3], sys.argv[4])
+    if sys.argv[1] == "create-topic":
+        create_topic(repo, sys.argv[2], conf.series)
 
-if sys.argv[1] == "delete-build":
-    delete_build(conf, sys.argv[2], sys.argv[3], sys.argv[4])
+    if sys.argv[1] == "create-build":
+        create_build(params, sys.argv[2:])
 
-if sys.argv[1] == "make":
-    build_with_make(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5:])
+    if sys.argv[1] == "delete-build":
+        delete_build(params, sys.argv[2:])
 
-if sys.argv[1] == "install":
-    install_build(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],
-                  sys.argv[6:])
+    if sys.argv[1] == "make":
+        build_with_make(conf, sys.argv[2], sys.argv[3], sys.argv[4],
+                        sys.argv[5:])
 
-if sys.argv[1] == "run-mysqld":
-    run_mysqld(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],
-               sys.argv[6:])
+    if sys.argv[1] == "install":
+        install_build(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],
+                      sys.argv[6:])
 
-if sys.argv[1] == "run-mysql-cmd":
-    run_local_mysql(conf, sys.argv[2], sys.argv[3], sys.argv[4],
-                    sys.argv[5], sys.argv[6:])
+    if sys.argv[1] == "run-mysqld":
+        run_mysqld(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],
+                   sys.argv[6:])
 
-if sys.argv[1] == "run-bash":
-    run_local_bash(conf, sys.argv[2], sys.argv[3], sys.argv[4],
-                   sys.argv[5], sys.argv[6:])
+    if sys.argv[1] == "run-mysql-cmd":
+        run_local_mysql(conf, sys.argv[2], sys.argv[3], sys.argv[4],
+                        sys.argv[5], sys.argv[6:])
 
-if sys.argv[1] == "mtr":
-    test_with_mtr(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5:])
+    if sys.argv[1] == "run-bash":
+        run_local_bash(conf, sys.argv[2], sys.argv[3], sys.argv[4],
+                       sys.argv[5], sys.argv[6:])
 
-if sys.argv[1] == "cleanup":
-    cleanup_repo(conf, len(sys.argv) >= 3 and sys.argv[2] == "--force")
+    if sys.argv[1] == "mtr":
+        test_with_mtr(conf, sys.argv[2], sys.argv[3], sys.argv[4],
+                      sys.argv[5:])
+
+    if sys.argv[1] == "cleanup":
+        cleanup_repo(conf, len(sys.argv) >= 3 and sys.argv[2] == "--force")
