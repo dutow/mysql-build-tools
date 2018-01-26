@@ -9,12 +9,14 @@ RUN DEBIAN_FRONTEND=noninteractive\
     apt-get update && \
     apt-get install -y software-properties-common wget && \
     wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add && \
-    apt-add-repository "deb http://apt.llvm.org/artful/ llvm-toolchain-artful main" && \
+    apt-add-repository "deb http://apt.llvm.org/artful/ llvm-toolchain-artful-4.0 main" && \
+    apt-add-repository "deb http://apt.llvm.org/artful/ llvm-toolchain-artful-5.0 main" && \
+    apt-add-repository "deb http://apt.llvm.org/artful/ llvm-toolchain-artful-6.0 main" && \
     apt-get update && \
     apt-get -y upgrade && \
     apt-get install -y clang-4.0 clang-5.0 clang-6.0 build-essential git cmake ninja-build bison gdb lldb \
             libncurses5-dev libssl-dev libaio-dev libreadline-dev systemtap-sdt-dev libmecab-dev \
-            zlib1g-dev libpam-dev libnuma-dev libwrap0-dev libldap2-dev \
+            zlib1g-dev libpam-dev libnuma-dev libwrap0-dev libldap2-dev libcurl4-openssl-dev \
             libprotobuf-dev protobuf-compiler \
             curl subversion git xterm\
             eatmydata subunit python-mysqldb libjson-perl devscripts debconf debhelper fakeroot \
