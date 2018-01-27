@@ -1,5 +1,5 @@
 
-from mbt_configurator import MbtConfigurator
+from mbt import MbtConfigurator
 
 DEFAULT_COMPILERS = {
         "gcc": {"CC": "gcc", "CXX": "g++"},
@@ -14,7 +14,7 @@ VARIANTS = {
         "reldebinfo": "RelWithDebInfo"
         }
 
-DISTROS = ["zesty", "artful"]
+DISTROS = ["debian-stretch", "ubuntu-zesty", "ubuntu-artful"]
 
 
 def base_config(variant_type):
@@ -26,6 +26,7 @@ def base_config(variant_type):
             "CMAKE_INSTALL_PREFIX": "/work/install",
             "WITH_ZLIB": "system",
             "WITH_SSL": "system",
+            "WITH_PAM": "ON",
             "ENABLE_DTRACE": "OFF",
             "DOWNLOAD_BOOST": "1",
             "WITH_BOOST": "dep-boost",
@@ -51,14 +52,22 @@ def configure_mbt():
             for variant_name, variant_type in VARIANTS.items():
                 base_conf = base_config(variant_type)
                 conf.add_build_config(distro+"-"+variant_name+"-"+comp_name,
-                                      "dutow/mbt-ubuntu-"+distro,
+                                      "dutow/mbt-"+distro,
                                       comp_env,
                                       base_conf
                                       )
+                conf.add_build_config(
+                        distro+"-"+variant_name+"-"+comp_name+"-bundled",
+                        "dutow/mbt-"+distro,
+                        comp_env,
+                        {**base_conf,
+                            "WITH_SSL": "bundled",
+                            "WITH_ZLIB": "bundled",
+                         })
                 if "clang" in comp_name:
                     conf.add_build_config(
                             distro+"-"+variant_name+"-"+comp_name+"-msan",
-                            "dutow/mbt-ubuntu-"+distro+"-msan",
+                            "dutow/mbt-"+distro+"-msan",
                             comp_env,
                             {**base_conf,
                                 "WITH_SSL": "bundled",
