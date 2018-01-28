@@ -1,5 +1,5 @@
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, REMAINDER
 
 
 class MbtParams:
@@ -62,6 +62,19 @@ class MbtParams:
                                  default=self.context.installation
                                  )
 
+    def add_remaining_args(self):
+        self.parser.add_argument('remaining_args', nargs=REMAINDER)
+
+    def add_boolean_arg(self, name):
+        self.parser.add_argument("--"+name, action="store_true")
+
     def parse(self, args):
         self.results = self.parser.parse_args(args)
+        # Work around an argparse limitation:
+        # The first remaining arg can't be an optional, so in this caes,
+        # -- has to be specified first
+        if "remaining_args" in self.results:
+            rargs = self.results.remaining_args
+            if len(rargs) and rargs[0] == "--":
+                self.results.remaining_args.pop(0)
         return self.results

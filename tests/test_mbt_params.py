@@ -174,3 +174,39 @@ def test_required_installation_long_succeeds():
     params = MbtParams(test_config(), dc)
     params.add_installation_arg()
     assert params.parse(["--installation", "some"]).installation == "some"
+
+
+def test_boolean_arg_not_present():
+    dc = DirectoryContext(test_config(),
+                          "/foo", "/foo")
+    params = MbtParams(test_config(), dc)
+    params.add_boolean_arg("bar")
+    assert params.parse([]).bar is False
+
+
+def test_boolean_arg_present():
+    dc = DirectoryContext(test_config(),
+                          "/foo", "/foo")
+    params = MbtParams(test_config(), dc)
+    params.add_boolean_arg("bar")
+    assert params.parse(["--bar"]).bar is True
+
+
+def test_remaining_args():
+    dc = DirectoryContext(test_config(),
+                          "/foo", "/foo")
+    params = MbtParams(test_config(), dc)
+    params.add_topic_arg()
+    params.add_remaining_args()
+    rargs = params.parse(["-t", "bar", "x", "-yz"]).remaining_args
+    assert rargs == ["x", "-yz"]
+
+
+def test_remaining_args_doubledash():
+    dc = DirectoryContext(test_config(),
+                          "/foo", "/foo")
+    params = MbtParams(test_config(), dc)
+    params.add_topic_arg()
+    params.add_remaining_args()
+    rargs = params.parse(["-t", "bar", "--", "-x", "-yz"]).remaining_args
+    assert rargs == ["-x", "-yz"]

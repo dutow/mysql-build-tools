@@ -77,10 +77,13 @@ def init_mbt(conf, repo):
             add_worktree(repo, "versions/"+ver, ver, "origin/"+ver)
 
 
-def create_topic(repo, name, versions):
-    for ver in versions:
-        branch = "ps-"+ver+"-"+name
-        add_worktree(repo, "topics/"+name+"/"+ver, branch, ver)
+def create_topic(repo, param_handler, args):
+    param_handler.add_topic_arg()
+    ctx = param_handler.parse(args)
+
+    for ver in param_handler.config.series:
+        branch = "ps-"+ver+"-"+ctx.topic
+        add_worktree(repo, "topics/"+ctx.topic+"/"+ver, branch, ver)
 
 
 def run_command(args, replace_curr):
@@ -214,11 +217,19 @@ def exec_installed_command(conf, topic, version, preset, install_tag, cmd,
             )
 
 
-def install_build(conf, topic, version, preset, tag, args):
-    src_dir = os.path.join("topics", topic, version)
-    build_dir = os.path.join("topics", topic, version+"-"+preset)
-    install_dir = os.path.join("topics", topic,
-                               version+"-"+preset+"-inst"+"-"+tag)
+def install_build(param_handler, args):
+    param_handler.add_topic_arg()
+    param_handler.add_series_arg()
+    param_handler.add_variant_arg()
+    param_handler.add_installation_arg()
+    param_handler.add_boolean_arg("init")
+    ctx = param_handler.parse(args)
+
+    src_dir = os.path.join("topics", ctx.topic, ctx.series)
+    build_dir = os.path.join("topics", ctx.topic, ctx.series+"-"+ctx.variant)
+    install_dir = os.path.join("topics", ctx.topic,
+                               ctx.series+"-"+ctx.variant+"-inst"+"-" +
+                               ctx.installation)
 
     if not os.path.isdir(install_dir):
         os.mkdir(install_dir)
@@ -250,7 +261,7 @@ max_connections=1000
         config.write(my_cnf_content)
         config.close()
 
-    buildconf = conf.build_configs[preset]
+    buildconf = param_handler.config.build_configs[ctx.variant]
 
     volumes = [src_dir+":src",
                build_dir+":build",
@@ -268,9 +279,9 @@ max_connections=1000
             False
             )
 
-    if "--init" in args:
+    if ctx.init:
 
-        if version == "5.7":
+        if ctx.series == "5.7":
             init_cmd = ["./bin/mysqld-debug",
                         "--defaults-file=/work/install/etc/my.cnf",
                         "--initialize-insecure",
@@ -281,97 +292,147 @@ max_connections=1000
                         ]
 
         run_installed_command(
-                conf,
-                topic,
-                version,
-                preset,
-                tag,
+                param_handler.config,
+                ctx.topic,
+                ctx.series,
+                ctx.variant,
+                ctx.installation,
                 init_cmd
                 )
 
 
-def run_mysqld(conf, topic, version, preset, tag, args):
+def run_mysqld(param_handler, args):
+    param_handler.add_topic_arg()
+    param_handler.add_series_arg()
+    param_handler.add_variant_arg()
+    param_handler.add_installation_arg()
+    param_handler.add_remaining_args()
+    ctx = param_handler.parse(args)
+
+    container_name = ("mysqld-"+ctx.topic +
+                      "-"+ctx.series +
+                      "-"+ctx.variant +
+                      "-"+ctx.installation
+                      )
+
     run_installed_command(
-            conf,
-            topic,
-            version,
-            preset,
-            tag,
+            param_handler.config,
+            ctx.topic,
+            ctx.series,
+            ctx.variant,
+            ctx.installation,
             ["./bin/mysqld-debug",
              "--defaults-file=/work/install/etc/my.cnf",
              ] + args,
             ["--expose=10000",
              "-p=10000:10000",
-             "--name", "mysqld-"+topic+"-"+version+"-"+preset+"-"+tag,
+             "--name", container_name,
              "--cpus=1"]
             )
 
 
-def run_local_mysql(conf, topic, version, preset, tag, args):
+def run_local_mysql(param_handler, args):
+    param_handler.add_topic_arg()
+    param_handler.add_series_arg()
+    param_handler.add_variant_arg()
+    param_handler.add_installation_arg()
+    param_handler.add_remaining_args()
+    ctx = param_handler.parse(args)
+
     exec_installed_command(
-            conf,
-            topic,
-            version,
-            preset,
-            tag,
+            param_handler.config,
+            ctx.topic,
+            ctx.series,
+            ctx.variant,
+            ctx.installation,
             ["./bin/mysql",
              "--defaults-file=/work/install/etc/my.cnf",
-             ] + args
+             ] + ctx.remaining_args
             )
 
 
-def run_local_bash(conf, topic, version, preset, tag, args):
+def run_local_bash(param_handler, args):
+    param_handler.add_topic_arg()
+    param_handler.add_series_arg()
+    param_handler.add_variant_arg()
+    param_handler.add_installation_arg()
+    param_handler.add_remaining_args()
+    ctx = param_handler.parse(args)
+
     exec_installed_command(
-            conf,
-            topic,
-            version,
-            preset,
-            tag,
+            param_handler.config,
+            ctx.topic,
+            ctx.series,
+            ctx.variant,
+            ctx.installation,
             ["/bin/bash",
-             ] + args
+             ] + ctx.remaining_args
             )
 
 
-def create_build(params, args):
-    params.add_topic_arg()
-    params.add_series_arg()
-    params.add_variant_arg()
-    ctx = params.parse(args)
+def create_build(param_handler, args):
+    param_handler.add_topic_arg()
+    param_handler.add_series_arg()
+    param_handler.add_variant_arg()
+    param_handler.add_remaining_args()
+    ctx = param_handler.parse(args)
 
-    buildconf = params.config.build_configs[ctx.variant]
+    buildconf = param_handler.config.build_configs[ctx.variant]
 
     def proc_cmake_arg(v):
         return "-D"+v[0] + "=" + v[1]
 
     cmake_args = list(map(proc_cmake_arg, buildconf["config"].items()))
 
-    run_docker_build_command(params.config,
+    run_docker_build_command(param_handler.config,
                              ctx.topic,
                              ctx.series,
                              ctx.variant,
                              "/work/build",
-                             ["cmake", "../src"] + cmake_args)
+                             ["cmake", "../src"]
+                             + cmake_args
+                             + ctx.remaining_args)
 
 
-def build_with_make(conf, topic, version, preset, add_argv):
-    run_docker_build_command(conf, topic, version, preset, "/work/build",
-                             ["make"] + add_argv)
+def build_with(param_handler, args, tool="make"):
+    param_handler.add_topic_arg()
+    param_handler.add_series_arg()
+    param_handler.add_variant_arg()
+    param_handler.add_remaining_args()
+    ctx = param_handler.parse(args)
+
+    run_docker_build_command(param_handler.config,
+                             ctx.topic,
+                             ctx.series,
+                             ctx.variant,
+                             "/work/build",
+                             [tool]
+                             + ctx.remaining_args)
 
 
-def delete_build(params, args):
-    params.add_topic_arg()
-    params.add_series_arg()
-    params.add_variant_arg()
-    ctx = params.parse(args)
+def delete_build(param_handler, args):
+    param_handler.add_topic_arg()
+    param_handler.add_series_arg()
+    param_handler.add_variant_arg()
+    ctx = param_handler.parse(args)
 
     build_dir = os.path.join("topics", ctx.topic, ctx.series+"-"+ctx.variant)
     shutil.rmtree(build_dir)
 
 
-def test_with_mtr(conf, topic, version, preset, add_argv):
-    run_docker_build_command(conf, topic, version, preset,
+def test_with_mtr(param_handler, args):
+    param_handler.add_topic_arg()
+    param_handler.add_series_arg()
+    param_handler.add_variant_arg()
+    param_handler.add_remaining_args()
+    ctx = param_handler.parse(args)
+
+    run_docker_build_command(param_handler.config,
+                             ctx.topic,
+                             ctx.series,
+                             ctx.variant,
                              "/work/build/mysql-test",
-                             ["./mtr"] + add_argv)
+                             ["./mtr"] + ctx.remaining_args)
 
 
 def cleanup_repo(conf, force=False):
@@ -393,7 +454,7 @@ def mbt_command():
     root = MbtRoot()
     conf = import_config(root)
     ctx = DirectoryContext(conf, root.root_dir(), os.getcwd())
-    params = MbtParams(conf, ctx, prog_name="mbt " + sys.argv[1])
+    param_handler = MbtParams(conf, ctx, prog_name="mbt " + sys.argv[1])
 
     repo = repo_object(conf)
 
@@ -401,37 +462,31 @@ def mbt_command():
         init_mbt(conf, repo)
 
     if sys.argv[1] == "create-topic":
-        create_topic(repo, sys.argv[2], conf.series)
+        create_topic(repo, param_handler, sys.argv[2:])
 
     if sys.argv[1] == "create-build":
-        create_build(params, sys.argv[2:])
+        create_build(param_handler, sys.argv[2:])
 
     if sys.argv[1] == "delete-build":
-        delete_build(params, sys.argv[2:])
+        delete_build(param_handler, sys.argv[2:])
 
     if sys.argv[1] == "make":
-        build_with_make(conf, sys.argv[2], sys.argv[3], sys.argv[4],
-                        sys.argv[5:])
+        build_with(param_handler, sys.argv[2:], tool="make")
 
     if sys.argv[1] == "install":
-        install_build(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],
-                      sys.argv[6:])
+        install_build(param_handler, sys.argv[2:])
 
     if sys.argv[1] == "run-mysqld":
-        run_mysqld(conf, sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],
-                   sys.argv[6:])
+        run_mysqld(param_handler, sys.argv[2:])
 
     if sys.argv[1] == "run-mysql-cmd":
-        run_local_mysql(conf, sys.argv[2], sys.argv[3], sys.argv[4],
-                        sys.argv[5], sys.argv[6:])
+        run_local_mysql(param_handler, sys.argv[2:])
 
     if sys.argv[1] == "run-bash":
-        run_local_bash(conf, sys.argv[2], sys.argv[3], sys.argv[4],
-                       sys.argv[5], sys.argv[6:])
+        run_local_bash(param_handler, sys.argv[2:])
 
     if sys.argv[1] == "mtr":
-        test_with_mtr(conf, sys.argv[2], sys.argv[3], sys.argv[4],
-                      sys.argv[5:])
+        test_with_mtr(param_handler, sys.argv[2:])
 
     if sys.argv[1] == "cleanup":
         cleanup_repo(conf, len(sys.argv) >= 3 and sys.argv[2] == "--force")

@@ -6,7 +6,7 @@ MySQL Build Tools
 Building and testing MySQL is challanging for several reasons:
 
 * There are multiple upstreams (MySQL, Percona, developer forks)
-* There are multiple versions under active development (5.5, 5.6, 5.7, 8.0)
+* There are multiple series under active development (5.5, 5.6, 5.7, 8.0)
 * It has to be tested with several platforms, compilers, and build configurations
 
 This tool aims to help with some of the above.
@@ -23,11 +23,11 @@ The specifics
 ---
 
 * There is one bare git repo called the master
-* There is a checkout for each version truck
+* There is a checkout for each series truck
 * There are topics for development
-* Each topic has a checkout of every relevant version
+* Each topic has a checkout of every relevant series
 * There can be any number of build configs for any checkout
-* Build configs are managed using presets
+* Build configs are managed using variants (presets)
 
 Warning
 ---
@@ -56,13 +56,13 @@ Usage
 ### Create a new topic
 
 ```
-./mbt create-topic <name>
+./mbt create-topic -t <name>
 ```
 
 ### Create a new build configuration
 
 ```
-./mbt create-build <topic> <version> <preset> [additional args...]
+./mbt create-build -t <topic> -s <series> -v <variant> -- [additional args...]
 ```
 
 This command invokes CMake.
@@ -72,7 +72,7 @@ Additional arguments are not yet supported.
 ### Delete a build configuration
 
 ```
-./mbt delete-build <topic> <version> <preset>
+./mbt delete-build -t <topic> -s <series> -v <variant>
 ```
 
 Removes the given build directory.
@@ -80,7 +80,7 @@ Removes the given build directory.
 ### Building with make
 
 ```
-./mbt make <topic> <version> <preset> [additional args...]
+./mbt make -t <topic> -s <series> -v <variant> -- [additional args...]
 ```
 
 Any argument can be specified to make, e.g. targets, `-j`, `VERBOSE=1`, ...
@@ -88,7 +88,7 @@ Any argument can be specified to make, e.g. targets, `-j`, `VERBOSE=1`, ...
 ### Running the mtr tests
 
 ```
-./mbt mtr <topic> <version> <preset> [additional args...]
+./mbt mtr -t <topic> -s <series> -v <variant> -- [additional args...]
 ```
 
 ### Cleaning up old branches
