@@ -306,6 +306,7 @@ def run_mysqld(param_handler, args):
     param_handler.add_series_arg()
     param_handler.add_variant_arg()
     param_handler.add_installation_arg()
+    param_handler.add_boolean_arg("valgrind")
     param_handler.add_remaining_args()
     ctx = param_handler.parse(args)
 
@@ -315,15 +316,19 @@ def run_mysqld(param_handler, args):
                       "-"+ctx.installation
                       )
 
+    mysqld_cmd = ["./bin/mysqld-debug"]
+    if ctx.valgrind:
+        mysqld_cmd = ["valgrind"] + mysqld_cmd
+
     run_installed_command(
             param_handler.config,
             ctx.topic,
             ctx.series,
             ctx.variant,
             ctx.installation,
-            ["./bin/mysqld-debug",
-             "--defaults-file=/work/install/etc/my.cnf",
-             ] + args,
+            mysqld_cmd +
+            ["--defaults-file=/work/install/etc/my.cnf"]
+            + ctx.remaining_args,
             ["--expose=10000",
              "-p=10000:10000",
              "--name", container_name,
