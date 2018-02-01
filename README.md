@@ -45,9 +45,14 @@ Quick start
 ---
 
 ```bash
+# NOTE: this installs mbt in ~/mysql-build-tools and adds it to the user's path,
+# no matter from where it's called
 \curl -sSL https://raw.githubusercontent.com/dutow/mysql-build-tools/master/install.sh | bash -s
-cp mysql-build-tools/config.py.sample config.py
-./mbt init
+
+mkdir workspace
+cd workhspace
+cp ~/mysql-build-tools/config.py.sample config.py
+mbt init
 ```
 
 Usage
@@ -56,13 +61,13 @@ Usage
 ### Create a new topic
 
 ```
-./mbt create-topic -t <name>
+mbt create-topic -t <name>
 ```
 
 ### Create a new build configuration
 
 ```
-./mbt create-build -t <topic> -s <series> -v <variant> -- [additional args...]
+mbt create-build -t <topic> -s <series> -v <variant> -- [additional args...]
 ```
 
 This command invokes CMake.
@@ -72,7 +77,7 @@ Additional arguments are not yet supported.
 ### Delete a build configuration
 
 ```
-./mbt delete-build -t <topic> -s <series> -v <variant>
+mbt delete-build -t <topic> -s <series> -v <variant>
 ```
 
 Removes the given build directory.
@@ -80,7 +85,7 @@ Removes the given build directory.
 ### Building with make
 
 ```
-./mbt make -t <topic> -s <series> -v <variant> -- [additional args...]
+mbt make -t <topic> -s <series> -v <variant> -- [additional args...]
 ```
 
 Any argument can be specified to make, e.g. targets, `-j`, `VERBOSE=1`, ...
@@ -88,13 +93,13 @@ Any argument can be specified to make, e.g. targets, `-j`, `VERBOSE=1`, ...
 ### Running the mtr tests
 
 ```
-./mbt mtr -t <topic> -s <series> -v <variant> -- [additional args...]
+mbt mtr -t <topic> -s <series> -v <variant> -- [additional args...]
 ```
 
 ### Cleaning up old branches
 
 ```
-./mbt cleanup [--force]
+mbt cleanup [--force]
 ```
 
 Prunes worktrees and removes branches that aren't checked out.
