@@ -73,8 +73,8 @@ def init_mbt(conf, repo):
     print("Checking out series...")
     for ver in conf.series:
         print(ver+"...")
-        if not os.path.isdir("versions/"+ver):
-            add_worktree(repo, "versions/"+ver, ver, "origin/"+ver)
+        if not os.path.isdir("upstreams/"+ver):
+            add_worktree(repo, "upstreams/"+ver, ver, "origin/"+ver)
 
 
 def create_topic(repo, param_handler, args):
@@ -181,6 +181,8 @@ def run_docker_build_command(conf, topic, version, preset, work_dir, args):
 def run_installed_command(conf, topic, version, preset, install_tag, cmd,
                           docker_args=[]):
     src_dir = os.path.join("topics", topic, version)
+    build_dir = os.path.join("topics", topic,
+                             version+"-"+preset)
     install_dir = os.path.join("topics", topic,
                                version+"-"+preset+"-inst"+"-"+install_tag)
 
@@ -188,6 +190,7 @@ def run_installed_command(conf, topic, version, preset, install_tag, cmd,
 
     volumes = [src_dir+":src",
                install_dir+":install",
+               build_dir+":build",
                # Required for debugging on the host X
                "/tmp/.X11-unix:/tmp/.X11-unix:ro",
                # Required for git subtree to work correctly,
@@ -442,7 +445,7 @@ def test_with_mtr(param_handler, args):
 
 def cleanup_repo(conf, force=False):
     # For some reason branch deletion doesn't work from the empty master
-    repo = git.Repo("versions/"+conf.series[0])
+    repo = git.Repo("upstream/origin/"+conf.series[0])
     repo.git.worktree("prune")
     for br in repo.heads:
         try:

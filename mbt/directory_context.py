@@ -19,6 +19,7 @@ class DirectoryContext:
 
         parts = relpath(current_directory, root_directory).split(sep)
 
+        #self.mode = DirectoryMode.TOPIC
         self.topic = None
         self.series = None
         self.variant = None
@@ -43,3 +44,27 @@ class DirectoryContext:
 
                 if len(instparts) == 2:
                     self.installation = instparts[1]
+
+    class StandardStructure:
+        def topic_series_src_dir(self, topic, series):
+            ts = DirectoryContext.TopicStructure
+            return ts.topic_dir(topic)+sep+series
+
+        def topic_series_build_dir(self, topic, series, variant):
+            ts = DirectoryContext.TopicStructure
+            return ts.topic_series_src_dir(topic, series)+"-"+variant
+
+        def topic_installation_dir(self, topic, series, variant, installation):
+            ts = DirectoryContext.TopicStructure
+            build_dir = ts.topic_series_build_dir(topic,
+                                                  series,
+                                                  variant)
+            return build_dir+"-inst-"+installation
+
+    class TopicStructure:
+        def topic_dir(self, topic):
+            return "topics"+sep+topic
+
+    class UpstreamStructure:
+        def topic_dir(self, name):
+            return "upstreams"+sep+name
