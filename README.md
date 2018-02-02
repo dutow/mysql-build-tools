@@ -51,7 +51,7 @@ Quick start
 
 mkdir workspace
 cd workhspace
-cp ~/mysql-build-tools/config.py.sample config.py
+cp ~/mysql-build-tools/mbt_config.py.sample mbt_config.py
 mbt init
 ```
 
