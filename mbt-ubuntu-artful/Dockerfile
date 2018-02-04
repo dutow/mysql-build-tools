@@ -19,6 +19,7 @@ RUN DEBIAN_FRONTEND=noninteractive\
             zlib1g-dev libpam-dev libnuma-dev libwrap0-dev libldap2-dev libcurl4-openssl-dev \
             libprotobuf-dev protobuf-compiler \
             curl subversion git xterm valgrind\
+            python3-mysql.connector python3 vim\
             eatmydata subunit python-mysqldb libjson-perl devscripts debconf debhelper fakeroot \
             lsb-release perl po-debconf psmisc dh-systemd &&\ 
     rm -rf /var/lib/apt/lists/* 
