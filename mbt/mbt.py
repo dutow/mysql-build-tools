@@ -461,6 +461,8 @@ def mbt_command():
     ctx = DirectoryContext(conf, root.root_dir(), os.getcwd())
     param_handler = MbtParams(conf, ctx, prog_name="mbt " + sys.argv[1])
 
+    os.chdir(root.root_dir())
+
     repo = repo_object(conf)
 
     if sys.argv[1] == "init":
