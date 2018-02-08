@@ -53,5 +53,10 @@ RUN mkdir /work/libcxx-msan-trunk/ && \
     CC=clang-4.0 CXX=clang++-4.0 cmake ../llvm -DCMAKE_INSTALL_PREFIX=.. -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_SANITIZER=Memory && \
     make install-libcxx install-libcxxabi
 
+RUN mkdir /work/bin &&\
+    cd /work/bin &&\
+    wget https://llvm.org/svn/llvm-project/compiler-rt/trunk/lib/asan/scripts/asan_symbolize.py &&\
+    chmod +x asan_symbolize.py
+
 ENTRYPOINT ["fixuid"]
 

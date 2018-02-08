@@ -440,6 +440,21 @@ def test_with_mtr(param_handler, args):
                              ["./mtr"] + ctx.remaining_args)
 
 
+def asan_symbolize(param_handler, args):
+    param_handler.add_topic_arg()
+    param_handler.add_series_arg()
+    param_handler.add_variant_arg()
+    param_handler.add_remaining_args()
+    ctx = param_handler.parse(args)
+
+    run_docker_build_command(param_handler.config,
+                             ctx.topic,
+                             ctx.series,
+                             ctx.variant,
+                             "/work/bin/",
+                             ["./asan_symbolize.py"] + ctx.remaining_args)
+
+
 def cleanup_repo(conf, force=False):
     # For some reason branch deletion doesn't work from the empty master
     repo = git.Repo("versions/"+conf.series[0])
@@ -494,6 +509,9 @@ def mbt_command():
 
     if sys.argv[1] == "mtr":
         test_with_mtr(param_handler, sys.argv[2:])
+
+    if sys.argv[1] == "asan-symbolize":
+        asan_symbolize(param_handler, sys.argv[2:])
 
     if sys.argv[1] == "cleanup":
         cleanup_repo(conf, len(sys.argv) >= 3 and sys.argv[2] == "--force")
