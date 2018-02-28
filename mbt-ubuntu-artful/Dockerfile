@@ -18,7 +18,7 @@ RUN DEBIAN_FRONTEND=noninteractive\
             libncurses5-dev libssl-dev libaio-dev libreadline-dev systemtap-sdt-dev libmecab-dev \
             zlib1g-dev libpam-dev libnuma-dev libwrap0-dev libldap2-dev libcurl4-openssl-dev \
             libprotobuf-dev protobuf-compiler \
-            curl subversion git xterm valgrind\
+            curl subversion git xterm valgrind libjemalloc-dev libjemalloc1\
             python3-mysql.connector python3 vim\
             eatmydata subunit python-mysqldb libjson-perl devscripts debconf debhelper fakeroot \
             lsb-release perl po-debconf psmisc dh-systemd &&\ 
@@ -58,5 +58,6 @@ RUN mkdir /work/bin &&\
     wget https://llvm.org/svn/llvm-project/compiler-rt/trunk/lib/asan/scripts/asan_symbolize.py &&\
     chmod +x asan_symbolize.py
 
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
 ENTRYPOINT ["fixuid"]
 
