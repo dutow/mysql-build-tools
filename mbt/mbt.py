@@ -213,7 +213,7 @@ def exec_installed_command(conf, topic, version, preset, install_tag, cmd,
             install_name,
             cmd,
             replace_current,
-            docker_args,
+            docker_args
             )
 
 
@@ -307,6 +307,7 @@ def run_mysqld(param_handler, args):
     param_handler.add_variant_arg()
     param_handler.add_installation_arg()
     param_handler.add_boolean_arg("valgrind")
+    param_handler.add_boolean_arg("massif")
     param_handler.add_remaining_args()
     ctx = param_handler.parse(args)
 
@@ -319,6 +320,11 @@ def run_mysqld(param_handler, args):
     mysqld_cmd = ["./bin/mysqld-debug"]
     if ctx.valgrind:
         mysqld_cmd = ["valgrind"] + mysqld_cmd
+    if ctx.massif:
+        mysqld_cmd = (["valgrind",
+                       "--tool=massif",
+                       "--massif-out-file=/work/install/massif.out"]
+                      + mysqld_cmd)
 
     run_installed_command(
             param_handler.config,
