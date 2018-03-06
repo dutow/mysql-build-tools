@@ -15,5 +15,5 @@ ENV CPLUS_INCLUDE_PATH=/work/libcxx-msan-trunk/include/c++/v1 \
   CFLAGS=-fsanitize=memory \
   CXXFLAGS="-fsanitize=memory -Wno-unused-command-line-argument -nostdinc++ -stdlib=libc++" \
   LIBRARY_PATH=/work/libcxx-msan-trunk/lib:/work/llvm-inst/lib:/work/llvm/lib/clang/7.0.0/lib/linux/ \
-  LD_LIBRARY_PATH=/work/libcxx-msan-trunk/lib:/work/llvm-inst/lib:/work/llvm/lib/clang/7.0.0/lib/linux/
-
+  LD_LIBRARY_PATH=/work/libcxx-msan-trunk/lib:/work/llvm-inst/lib:/work/llvm/lib/clang/7.0.0/lib/linux/ \
+  MSAN_OPTIONS="allocator_may_return_null=1"
