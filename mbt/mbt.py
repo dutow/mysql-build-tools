@@ -179,8 +179,10 @@ def run_docker_build_command(conf, topic, version, preset, work_dir, args):
 
 
 def run_installed_command(conf, topic, version, preset, install_tag, cmd,
-                          docker_args=[]):
+                          docker_args=[], replace_current=False):
     src_dir = os.path.join("topics", topic, version)
+    build_dir = os.path.join("topics", topic, version+"-"+preset)
+
     install_dir = os.path.join("topics", topic,
                                version+"-"+preset+"-inst"+"-"+install_tag)
 
@@ -188,6 +190,7 @@ def run_installed_command(conf, topic, version, preset, install_tag, cmd,
 
     volumes = [src_dir+":src",
                install_dir+":install",
+               build_dir+":build",
                # Required for debugging on the host X
                "/tmp/.X11-unix:/tmp/.X11-unix:ro",
                # Required for git subtree to work correctly,
@@ -200,7 +203,7 @@ def run_installed_command(conf, topic, version, preset, install_tag, cmd,
             "/work/install",
             buildconf["environment"],
             cmd,
-            False,
+            True,
             docker_args
             )
 
@@ -342,7 +345,7 @@ def run_mysqld(param_handler, args):
             )
 
 
-def run_local_mysql(param_handler, args):
+def exec_local_mysql(param_handler, args):
     param_handler.add_topic_arg()
     param_handler.add_series_arg()
     param_handler.add_variant_arg()
@@ -362,7 +365,7 @@ def run_local_mysql(param_handler, args):
             )
 
 
-def run_local_bash(param_handler, args):
+def exec_local_bash(param_handler, args):
     param_handler.add_topic_arg()
     param_handler.add_series_arg()
     param_handler.add_variant_arg()
@@ -378,6 +381,27 @@ def run_local_bash(param_handler, args):
             ctx.installation,
             ["/bin/bash",
              ] + ctx.remaining_args
+            )
+
+
+def run_local_bash(param_handler, args):
+    param_handler.add_topic_arg()
+    param_handler.add_series_arg()
+    param_handler.add_variant_arg()
+    param_handler.add_installation_arg()
+    param_handler.add_remaining_args()
+    ctx = param_handler.parse(args)
+
+    run_installed_command(
+            param_handler.config,
+            ctx.topic,
+            ctx.series,
+            ctx.variant,
+            ctx.installation,
+            ["/bin/bash",
+             ] + ctx.remaining_args,
+            ["-it"],
+            True
             )
 
 
@@ -508,10 +532,13 @@ def mbt_command():
         run_mysqld(param_handler, sys.argv[2:])
 
     if sys.argv[1] == "run-mysql-cmd":
-        run_local_mysql(param_handler, sys.argv[2:])
+        exec_local_mysql(param_handler, sys.argv[2:])
 
     if sys.argv[1] == "run-bash":
         run_local_bash(param_handler, sys.argv[2:])
+
+    if sys.argv[1] == "exec-bash":
+        exec_local_bash(param_handler, sys.argv[2:])
 
     if sys.argv[1] == "mtr":
         test_with_mtr(param_handler, sys.argv[2:])
