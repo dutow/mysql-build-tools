@@ -1,0 +1,2 @@
+#!/bin/bash
+docker build --build-arg ubuntuVersion=16.04 --build-arg ubuntuVersionName=xenial -t $IMAGE_NAME .

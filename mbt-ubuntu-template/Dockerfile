@@ -2,25 +2,40 @@
 # Source and build directories should be mounted under work
 # Use with the work-with script
 
-FROM ubuntu:17.04
+ARG ubuntuVersion
+FROM ubuntu:$ubuntuVersion
+ARG ubuntuVersionName
 MAINTAINER Zsolt Parragi <zsolt.parragi@cancellar.hu>
 
 RUN DEBIAN_FRONTEND=noninteractive\
     apt-get update && \
-    apt-get install -y software-properties-common wget && \
-    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add && \
-    apt-add-repository "deb http://apt.llvm.org/zesty/ llvm-toolchain-zesty main" && \
-    apt-add-repository "deb http://apt.llvm.org/zesty/ llvm-toolchain-zesty-5.0 main" && \
-    apt-get update && \
     apt-get -y upgrade && \
-    apt-get install -y clang-4.0 clang-5.0 clang-6.0 build-essential git cmake ninja-build bison gdb lldb \
+    apt-get install -y build-essential git cmake ninja-build bison gdb \
+            software-properties-common wget \
             libncurses5-dev libssl-dev libaio-dev libreadline-dev systemtap-sdt-dev libmecab-dev \
-            zlib1g-dev libpam-dev libnuma-dev libwrap0-dev libldap2-dev \
+            zlib1g-dev libpam-dev libnuma-dev libwrap0-dev libldap2-dev libcurl4-openssl-dev \
             libprotobuf-dev protobuf-compiler \
-            curl subversion git \
+            curl subversion git xterm valgrind libjemalloc-dev libjemalloc1 \
+            python3-mysql.connector python3 vim \
             eatmydata subunit python-mysqldb libjson-perl devscripts debconf debhelper fakeroot \
-            lsb-release perl po-debconf psmisc dh-systemd &&\ 
-    rm -rf /var/lib/apt/lists/* 
+            lsb-release perl po-debconf psmisc dh-systemd 
+
+# install clang
+RUN DEBIAN_FRONTEND=noninteractive\
+    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
+    (if [ "$ubuntuVersionName" = "trusty" ] ; then \
+       add-apt-repository -y ppa:ubuntu-toolchain-r/test ; \
+       apt-add-repository "deb http://apt.llvm.org/$ubuntuVersionName/ llvm-toolchain-$ubuntuVersionName-4.0 main" ; \
+       apt-get -yq purge cmake ; \
+       wget -q https://cmake.org/files/v3.10/cmake-3.10.2-Linux-x86_64.sh ; \
+       sh cmake-*.sh --skip-license ; \
+       rm cmake-*.sh ; \
+       cmake --version ; \
+      fi) && \
+    apt-add-repository "deb http://apt.llvm.org/$ubuntuVersionName/ llvm-toolchain-$ubuntuVersionName-5.0 main" && \
+    apt-add-repository "deb http://apt.llvm.org/$ubuntuVersionName/ llvm-toolchain-$ubuntuVersionName-6.0 main" && \
+    apt-get update && \
+    apt-get install -y clang-4.0 clang-5.0 clang-6.0 lldb-5.0
 
 # FixUID
 RUN addgroup --gid 1000 docker && \
@@ -50,6 +65,11 @@ RUN mkdir /work/libcxx-msan-trunk/ && \
     mkdir -p build && cd build && \
     CC=clang-4.0 CXX=clang++-4.0 cmake ../llvm -DCMAKE_INSTALL_PREFIX=.. -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_SANITIZER=Memory && \
     make install-libcxx install-libcxxabi
+
+RUN mkdir /work/bin &&\
+    cd /work/bin &&\
+    wget https://llvm.org/svn/llvm-project/compiler-rt/trunk/lib/asan/scripts/asan_symbolize.py &&\
+    chmod +x asan_symbolize.py
 
 ENTRYPOINT ["fixuid"]
 
