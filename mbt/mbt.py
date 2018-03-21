@@ -220,6 +220,26 @@ def exec_installed_command(conf, topic, version, preset, install_tag, cmd,
             )
 
 
+def run_pull(repo, param_handler, args):
+    param_handler.add_remote_arg()
+    ctx = param_handler.parse(args)
+
+    print("Pulling from " + ctx.remote)
+    repo.remotes[ctx.remote].fetch()
+    for ver in param_handler.config.series:
+        print(" "+ver+"...")
+        repo = git.Repo("versions/"+ver)
+        repo.git.pull(ctx.remote, ver)
+
+
+def run_push(config):
+    print("Pushing...")
+    for ver in config.series:
+        print(" "+ver+"...")
+        repo = git.Repo("versions/"+ver)
+        repo.git.push()
+
+
 def install_build(param_handler, args):
     param_handler.add_topic_arg()
     param_handler.add_series_arg()
@@ -512,6 +532,12 @@ def mbt_command():
 
     if sys.argv[1] == "init":
         init_mbt(conf, repo)
+
+    if sys.argv[1] == "pull-series":
+        run_pull(repo, param_handler, sys.argv[2:])
+
+    if sys.argv[1] == "push-series":
+        run_push(conf)
 
     if sys.argv[1] == "create-topic":
         create_topic(repo, param_handler, sys.argv[2:])

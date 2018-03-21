@@ -62,6 +62,13 @@ class MbtParams:
                                  default=self.context.installation
                                  )
 
+    def add_remote_arg(self):
+        self.parser.add_argument("-r", "--remote",
+                                 required=True,
+                                 help="Remote to be used",
+                                 choices=self.config.remotes.keys()
+                                 )
+
     def add_remaining_args(self):
         self.parser.add_argument('remaining_args', nargs=REMAINDER)
 
