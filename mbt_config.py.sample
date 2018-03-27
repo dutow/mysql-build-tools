@@ -28,6 +28,7 @@ def base_config(variant_type):
             "WITH_SSL": "system",
             "WITH_PAM": "ON",
             "ENABLE_DTRACE": "OFF",
+            "ENABLE_DOWNLOADS": "ON",
             "DOWNLOAD_BOOST": "1",
             "WITH_BOOST": "dep-boost",
             "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
