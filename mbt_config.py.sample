@@ -84,5 +84,17 @@ def configure_mbt():
                                 "WITH_NUMA": "OFF",
                                 "MYSQL_MAINTAINER_MODE": "OFF"
                              })
+                    conf.add_build_config(
+                            distro+"-"+variant_name+"-"+comp_name+"-ubsan",
+                            "dutow/mbt-"+distro,
+                            comp_env,
+                            {**base_conf,
+                                "WITH_SSL": "bundled",
+                                "WITH_ZLIB": "bundled",
+                                "WITH_UBSAN": "ON",
+                                "WITH_NUMA": "OFF",
+                                "WITH_EMBEDDED_SERVER": "OFF",
+                                "MYSQL_MAINTAINER_MODE": "OFF"
+                             })
 
     return conf
