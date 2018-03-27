@@ -14,7 +14,7 @@ VARIANTS = {
         "reldebinfo": "RelWithDebInfo"
         }
 
-DISTROS = ["debian-stretch", "ubuntu-zesty", "ubuntu-artful"]
+DISTROS = ["debian-stretch", "ubuntu-zesty", "ubuntu-artful", "ubuntu-bionic"]
 
 
 def base_config(variant_type):
