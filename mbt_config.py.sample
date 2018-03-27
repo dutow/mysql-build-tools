@@ -80,6 +80,7 @@ def configure_mbt():
                                 "WITH_SSL": "bundled",
                                 "WITH_ZLIB": "bundled",
                                 "WITH_MSAN": "ON",
+                                "WITH_NUMA": "OFF",
                                 "MYSQL_MAINTAINER_MODE": "OFF"
                              })
 
