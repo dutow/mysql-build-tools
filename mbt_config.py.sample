@@ -64,6 +64,13 @@ def configure_mbt():
                             "WITH_SSL": "bundled",
                             "WITH_ZLIB": "bundled",
                          })
+                conf.add_build_config(
+                        distro+"-"+variant_name+"-"+comp_name+"-valgrind",
+                        "dutow/mbt-"+distro,
+                        comp_env,
+                        {**base_conf,
+                            "WITH_VALGRIND": "ON",
+                         })
                 if "clang" in comp_name:
                     conf.add_build_config(
                             distro+"-"+variant_name+"-"+comp_name+"-msan",
