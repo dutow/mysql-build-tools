@@ -53,6 +53,11 @@ RUN \
     mkdir /work && \
     chown -R docker:docker /work
 
+# Add vault binary
+RUN wget -q -O vault.zip https://releases.hashicorp.com/vault/0.9.6/vault_0.9.6_linux_amd64.zip && \
+    unzip vault.zip -d /usr/local/bin && \
+    rm vault.zip 
+
 USER docker:docker
 
 # add an msanified libcxx for testing mysql with msan
