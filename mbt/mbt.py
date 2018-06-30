@@ -331,6 +331,7 @@ def run_mysqld(param_handler, args):
     param_handler.add_installation_arg()
     param_handler.add_boolean_arg("valgrind")
     param_handler.add_boolean_arg("massif")
+    param_handler.add_int_arg("port", 10000)
     param_handler.add_remaining_args()
     ctx = param_handler.parse(args)
 
@@ -349,6 +350,8 @@ def run_mysqld(param_handler, args):
                        "--massif-out-file=/work/install/massif.out"]
                       + mysqld_cmd)
 
+    port = str(ctx.port)
+
     run_installed_command(
             param_handler.config,
             ctx.topic,
@@ -358,8 +361,8 @@ def run_mysqld(param_handler, args):
             mysqld_cmd +
             ["--defaults-file=/work/install/etc/my.cnf"]
             + ctx.remaining_args,
-            ["--expose=10000",
-             "-p=10000:10000",
+            ["--expose="+port,
+             "-p="+port+":"+port,
              "--name", container_name,
              "--cpus=1"]
             )

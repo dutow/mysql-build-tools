@@ -75,6 +75,9 @@ class MbtParams:
     def add_boolean_arg(self, name):
         self.parser.add_argument("--"+name, action="store_true")
 
+    def add_int_arg(self, name, default=None):
+        self.parser.add_argument("--"+name, type=int, default=default)
+
     def parse(self, args):
         self.results = self.parser.parse_args(args)
         # Work around an argparse limitation:
