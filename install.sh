@@ -4,7 +4,7 @@ cd ~
 git clone https://github.com/dutow/mysql-build-tools.git
 echo "export PATH=\$PATH:`pwd`/mysql-build-tools/bin" >> ~/.bashrc
 cd mysql-build-tools
-PIPENV_PIPFILE="`pwd`/Pipfile" pipenv install --python 3.6
+PIPENV_PIPFILE="`pwd`/bin/../Pipfile" pipenv install --python 3.6
 echo "==========================="
 echo "MBT installed. Now:"
 echo " * Initialize mbt:"
