@@ -18,7 +18,7 @@ RUN DEBIAN_FRONTEND=noninteractive\
             curl subversion git xterm valgrind libjemalloc-dev libjemalloc1 \
             python3-mysql.connector python3 vim \
             eatmydata subunit python-mysqldb libjson-perl devscripts debconf debhelper fakeroot \
-            lsb-release perl po-debconf psmisc dh-systemd libzstd-dev
+            lsb-release perl po-debconf psmisc dh-systemd libzstd-dev pkg-config libtirpc-dev
 
 # install clang
 RUN DEBIAN_FRONTEND=noninteractive\
