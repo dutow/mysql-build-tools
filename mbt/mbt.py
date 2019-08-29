@@ -666,7 +666,7 @@ def mbt_command():
         return
 
 
-print("""MySQL Build Tools
+    print("""MySQL Build Tools
 
 Generic commands:
 -----------
