@@ -139,7 +139,7 @@ def run_docker_command(img, volumes, work_dir, env, args, replace_curr=True,
     if replace_curr:
         docker_args += ["-t"]
 
-    docker_args = (["/usr/bin/docker", "run", "--privileged", "--rm", "-i"] +
+    docker_args = (["/usr/bin/docker", "run", "--privileged", "--rm", "-i", ] +
                    volumes +
                    env +
                    ["-w", work_dir] +
@@ -239,6 +239,34 @@ def run_push(config):
         repo = git.Repo("versions/"+ver)
         repo.git.push()
 
+def detect_build_tool(topic, version, preset):
+    build_dir = os.path.join("topics", topic, version+"-"+preset)
+
+    if os.path.isfile(os.path.join(build_dir, "Makefile")):
+            return "make"
+
+    if os.path.isfile(os.path.join(build_dir, "build.ninja")):
+            return "ninja"
+
+    raise Exception("Couldn't detect build tool")
+
+def detect_mysqld_executable(topic, version, preset):
+    # This tries to use the build directory, which has the mysqld executable within sql/
+    if version == "8.0":
+      ex_dir = os.path.join("topics", topic, version+"-"+preset, "bin")
+    else:
+      ex_dir = os.path.join("topics", topic, version+"-"+preset, "sql")
+    debug_executable = "mysqld-debug"
+    release_executable = "mysqld"
+
+    if os.path.isfile(os.path.join(ex_dir, debug_executable)):
+            return os.path.join("./bin", debug_executable)
+
+    if os.path.isfile(os.path.join(ex_dir, release_executable)):
+            return os.path.join("./bin", release_executable)
+
+    raise Exception("Couldn't find mysqld executable")
+
 
 def install_build(param_handler, args):
     param_handler.add_topic_arg()
@@ -246,6 +274,7 @@ def install_build(param_handler, args):
     param_handler.add_variant_arg()
     param_handler.add_installation_arg()
     param_handler.add_boolean_arg("init")
+    param_handler.add_remaining_args()
     ctx = param_handler.parse(args)
 
     src_dir = os.path.join("topics", ctx.topic, ctx.series)
@@ -298,14 +327,14 @@ max_connections=1000
             volumes,
             "/work/build",
             buildconf["environment"],
-            ["make", "install"],
+            [detect_build_tool(ctx.topic, ctx.series, ctx.variant), "install"],
             False
             )
 
     if ctx.init:
 
-        if ctx.series == "5.7":
-            init_cmd = ["./bin/mysqld-debug",
+        if ctx.series == "5.7" or ctx.series == "8.0":
+            init_cmd = [detect_mysqld_executable(ctx.topic, ctx.series, ctx.variant),
                         "--defaults-file=/work/install/etc/my.cnf",
                         "--initialize-insecure",
                         ]
@@ -320,8 +349,9 @@ max_connections=1000
                 ctx.series,
                 ctx.variant,
                 ctx.installation,
-                init_cmd
+                init_cmd + ctx.remaining_args
                 )
+
 
 
 def run_mysqld(param_handler, args):
@@ -341,7 +371,7 @@ def run_mysqld(param_handler, args):
                       "-"+ctx.installation
                       )
 
-    mysqld_cmd = ["./bin/mysqld-debug"]
+    mysqld_cmd = [detect_mysqld_executable(ctx.topic, ctx.series, ctx.variant)]
     if ctx.valgrind:
         mysqld_cmd = ["valgrind"] + mysqld_cmd
     if ctx.massif:
@@ -452,7 +482,7 @@ def create_build(param_handler, args):
                              + ctx.remaining_args)
 
 
-def build_with(param_handler, args, tool="make"):
+def build_with(param_handler, args):
     param_handler.add_topic_arg()
     param_handler.add_series_arg()
     param_handler.add_variant_arg()
@@ -464,7 +494,7 @@ def build_with(param_handler, args, tool="make"):
                              ctx.series,
                              ctx.variant,
                              "/work/build",
-                             [tool]
+                             [detect_build_tool(ctx.topic, ctx.series, ctx.variant)]
                              + ctx.remaining_args)
 
 
@@ -490,7 +520,7 @@ def test_with_mtr(param_handler, args):
                              ctx.series,
                              ctx.variant,
                              "/work/build/mysql-test",
-                             ["./mtr"] + ctx.remaining_args)
+                             ["eatmydata",  "./mtr"] + ctx.remaining_args)
 
 
 def asan_symbolize(param_handler, args):
@@ -535,45 +565,89 @@ def mbt_command():
 
     if sys.argv[1] == "init":
         init_mbt(conf, repo)
+        return
 
     if sys.argv[1] == "pull-series":
         run_pull(repo, param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "push-series":
         run_push(conf)
+        return
 
     if sys.argv[1] == "create-topic":
         create_topic(repo, param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "create-build":
         create_build(param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "delete-build":
         delete_build(param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "make":
-        build_with(param_handler, sys.argv[2:], tool="make")
+        build_with(param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "install":
         install_build(param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "run-mysqld":
         run_mysqld(param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "run-mysql-cmd":
         exec_local_mysql(param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "run-bash":
         run_local_bash(param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "exec-bash":
         exec_local_bash(param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "mtr":
         test_with_mtr(param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "asan-symbolize":
         asan_symbolize(param_handler, sys.argv[2:])
+        return
 
     if sys.argv[1] == "cleanup":
         cleanup_repo(conf, len(sys.argv) >= 3 and sys.argv[2] == "--force")
+        return
+
+
+print("""MySQL Build Tools
+
+Generic commands:
+-----------
+init                      : (re)initializies the workspace
+pull-series -r <remote>   : pulls latest trunks from a given remote
+push-series -r <remote>   : pushes series to a given remote
+cleanup [-f]              : removes old branches/checkouts
+
+Working with builds:
+-----------
+create-topic -t <topic>: creates a new topic
+create-build -t <topic> -v <variant> -s <series> [-- <CMAKE_ARGS>]
+make -t <topic> -v <variant> -s <series> [-- <TOOL_ARGS>]
+mtr -t <topic> -v <variant> -s <series> [-- <MTR_ARGS>]
+
+Working with installed builds:
+install -t <topic> -v <variant> -s <series> -i <installation> [--init]
+run-mysqld -t <topic> -v <variant> -s <series> -i <installation> [--valgrind] [--massif] [--port=X] [-- <MYSQLD_ARGS>]
+exec-mysql -t <topic> -v <variant> -s <series> -i <installation> [-- <MYSQLD_ARGS>]
+exec-bash -t <topic> -v <variant> -s <series> -i <installation> [-- <MYSQLD_ARGS>]
+run-bash -t <topic> -v <variant> -s <series> -i <installation> [-- <MYSQLD_ARGS>]
+
+
+
+Most of the time -t, -v, -s, -i args can be omitted if the command is executed from the correct folder.
+""")
