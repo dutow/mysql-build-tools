@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import signal
+import tempfile
 
 from .mbt_root import MbtRoot
 from .mbt_params import MbtParams
@@ -552,6 +553,43 @@ def cleanup_repo(conf, force=False):
                 print(e)
             pass
 
+def reupmerge(param_handler, args):
+    param_handler.add_topic_arg()
+    ctx = param_handler.parse(args)
+
+    min_version = '5.6'
+    later_versions = [ '5.7', '8.0' ]
+
+    base_branch = "ps-"+min_version+"-"+ctx.topic
+
+    for ver in later_versions:
+      next_branch = "ps-"+ver+"-"+ctx.topic
+      print("Reupmerging " + base_branch + " to " + next_branch)
+      repo = git.Repo("topics/"+ctx.topic+"/"+ver)
+      commit_msg = repo.git.log("--format=%B", "-1")
+      diff = repo.git.log("-1", "-p", "-m", "--first-parent", "--pretty=email", "--full-index", "--binary")
+      name_diff = ''
+      name_msg = ''
+      with tempfile.NamedTemporaryFile(mode='w') as tmp_diff:
+        tmp_diff.write(diff)
+        tmp_diff.write("\n")
+        tmp_diff.flush()
+        name_diff = tmp_diff.name
+        with tempfile.NamedTemporaryFile(mode='w') as tmp_msg:
+          tmp_msg.write(commit_msg)
+          tmp_msg.flush()
+          name_msg = tmp_msg.name
+
+          repo.git.reset("--keep", "HEAD~")
+          repo.git.merge("-s", "ours", "--no-commit", base_branch)
+          if diff.count('\n') > 4:
+            # Empty diff, this is a null-merge, and we can't apply nothing
+            repo.git.apply("--index", name_diff)
+          repo.git.commit("-F", name_msg)
+
+      base_branch = next_branch
+
+
 
 def mbt_command():
     root = MbtRoot()
@@ -623,6 +661,10 @@ def mbt_command():
         cleanup_repo(conf, len(sys.argv) >= 3 and sys.argv[2] == "--force")
         return
 
+    if sys.argv[1] == "reupmerge":
+        reupmerge(param_handler, sys.argv[2:])
+        return
+
 
 print("""MySQL Build Tools
 
@@ -641,13 +683,16 @@ make -t <topic> -v <variant> -s <series> [-- <TOOL_ARGS>]
 mtr -t <topic> -v <variant> -s <series> [-- <MTR_ARGS>]
 
 Working with installed builds:
+-----------
 install -t <topic> -v <variant> -s <series> -i <installation> [--init]
 run-mysqld -t <topic> -v <variant> -s <series> -i <installation> [--valgrind] [--massif] [--port=X] [-- <MYSQLD_ARGS>]
 exec-mysql -t <topic> -v <variant> -s <series> -i <installation> [-- <MYSQLD_ARGS>]
 exec-bash -t <topic> -v <variant> -s <series> -i <installation> [-- <MYSQLD_ARGS>]
 run-bash -t <topic> -v <variant> -s <series> -i <installation> [-- <MYSQLD_ARGS>]
 
-
+Other helpers:
+-----------
+reupmerge -t <topic>  : Modifies merge pointers in later branches, to the current commit in the lowest branch.
 
 Most of the time -t, -v, -s, -i args can be omitted if the command is executed from the correct folder.
 """)
