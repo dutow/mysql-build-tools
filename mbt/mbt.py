@@ -240,31 +240,39 @@ def run_push(config):
         repo = git.Repo("versions/"+ver)
         repo.git.push()
 
+
 def detect_build_tool(topic, version, preset):
     build_dir = os.path.join("topics", topic, version+"-"+preset)
 
     if os.path.isfile(os.path.join(build_dir, "Makefile")):
-            return "make"
+        return "make"
 
     if os.path.isfile(os.path.join(build_dir, "build.ninja")):
-            return "ninja"
+        return "ninja"
 
     raise Exception("Couldn't detect build tool")
 
+
 def detect_mysqld_executable(topic, version, preset):
-    # This tries to use the build directory, which has the mysqld executable within sql/
+    # This tries to use the build directory,
+    # which has the mysqld executable within sql/
     if version == "8.0":
-      ex_dir = os.path.join("topics", topic, version+"-"+preset, "bin")
+        ex_dir = os.path.join("topics",
+                              topic, version+"-"+preset,
+                              "bin")
     else:
-      ex_dir = os.path.join("topics", topic, version+"-"+preset, "sql")
+        ex_dir = os.path.join("topics",
+                              topic,
+                              version+"-"+preset,
+                              "sql")
     debug_executable = "mysqld-debug"
     release_executable = "mysqld"
 
     if os.path.isfile(os.path.join(ex_dir, debug_executable)):
-            return os.path.join("./bin", debug_executable)
+        return os.path.join("./bin", debug_executable)
 
     if os.path.isfile(os.path.join(ex_dir, release_executable)):
-            return os.path.join("./bin", release_executable)
+        return os.path.join("./bin", release_executable)
 
     raise Exception("Couldn't find mysqld executable")
 
@@ -335,7 +343,10 @@ max_connections=1000
     if ctx.init:
 
         if ctx.series == "5.7" or ctx.series == "8.0":
-            init_cmd = [detect_mysqld_executable(ctx.topic, ctx.series, ctx.variant),
+            mysql_exe = detect_mysqld_executable(ctx.topic,
+                                                 ctx.series,
+                                                 ctx.variant)
+            init_cmd = [mysql_exe,
                         "--defaults-file=/work/install/etc/my.cnf",
                         "--initialize-insecure",
                         ]
@@ -352,7 +363,6 @@ max_connections=1000
                 ctx.installation,
                 init_cmd + ctx.remaining_args
                 )
-
 
 
 def run_mysqld(param_handler, args):
@@ -490,12 +500,14 @@ def build_with(param_handler, args):
     param_handler.add_remaining_args()
     ctx = param_handler.parse(args)
 
+    build_tool = detect_build_tool(ctx.topic, ctx.series, ctx.variant)
+
     run_docker_build_command(param_handler.config,
                              ctx.topic,
                              ctx.series,
                              ctx.variant,
                              "/work/build",
-                             [detect_build_tool(ctx.topic, ctx.series, ctx.variant)]
+                             [build_tool]
                              + ctx.remaining_args)
 
 
@@ -553,45 +565,63 @@ def cleanup_repo(conf, force=False):
                 print(e)
             pass
 
+
 def reupmerge(param_handler, args):
     param_handler.add_topic_arg()
     ctx = param_handler.parse(args)
 
     min_version = '5.6'
-    later_versions = [ '5.7', '8.0' ]
+    later_versions = ['5.7', '8.0']
 
     base_branch = "ps-"+min_version+"-"+ctx.topic
 
     for ver in later_versions:
-      next_branch = "ps-"+ver+"-"+ctx.topic
-      print("Reupmerging " + base_branch + " to " + next_branch)
-      repo = git.Repo("topics/"+ctx.topic+"/"+ver)
-      commit_msg = repo.git.log("--format=%B", "-1")
-      diff = repo.git.log("-1", "-p", "-m", "--first-parent", "--pretty=email", "--full-index", "--binary")
-      name_diff = ''
-      name_msg = ''
-      with tempfile.NamedTemporaryFile(mode='w') as tmp_diff:
-        tmp_diff.write(diff)
-        tmp_diff.write("\n")
-        tmp_diff.flush()
-        name_diff = tmp_diff.name
-        with tempfile.NamedTemporaryFile(mode='w') as tmp_msg:
-          tmp_msg.write(commit_msg)
-          tmp_msg.flush()
-          name_msg = tmp_msg.name
+        next_branch = "ps-"+ver+"-"+ctx.topic
+        print("Reupmerging " + base_branch + " to " + next_branch)
+        repo = git.Repo("topics/"+ctx.topic+"/"+ver)
+        commit_msg = repo.git.log("--format=%B", "-1")
+        diff = repo.git.log("-1",
+                            "-p",
+                            "-m",
+                            "--first-parent",
+                            "--pretty=email",
+                            "--full-index",
+                            "--binary")
+        name_diff = ''
+        name_msg = ''
+        with tempfile.NamedTemporaryFile(mode='w') as tmp_diff:
+            with tempfile.NamedTemporaryFile(mode='w') as tmp_msg:
+                tmp_diff.write(diff)
+                tmp_diff.write("\n")
+                tmp_diff.flush()
+                name_diff = tmp_diff.name
+                tmp_msg.write(commit_msg)
+                tmp_msg.flush()
+                name_msg = tmp_msg.name
 
-          repo.git.reset("--keep", "HEAD~")
-          repo.git.merge("-s", "ours", "--no-commit", base_branch)
-          if diff.count('\n') > 4:
-            # Empty diff, this is a null-merge, and we can't apply nothing
-            repo.git.apply("--index", name_diff)
-          repo.git.commit("-F", name_msg)
+                repo.git.reset("--keep", "HEAD~")
+                repo.git.merge("-s", "ours", "--no-commit", base_branch)
+                if diff.count('\n') > 4:
+                    # Empty diff, this is a null-merge
+                    repo.git.apply("--index", name_diff)
+                repo.git.commit("-F", name_msg)
 
-      base_branch = next_branch
+        base_branch = next_branch
 
+
+def print_help():
+    # Print a usage message
+    __location__ = os.path.realpath(os.path.join(os.getcwd(),
+                                    os.path.dirname(__file__)))
+    print(open(__location__ + "/help.txt").read())
 
 
 def mbt_command():
+
+    if len(sys.argv) < 2:
+        print_help()
+        return
+
     root = MbtRoot()
     conf = import_config(root)
     ctx = DirectoryContext(conf, root.root_dir(), os.getcwd())
@@ -665,34 +695,4 @@ def mbt_command():
         reupmerge(param_handler, sys.argv[2:])
         return
 
-
-    print("""MySQL Build Tools
-
-Generic commands:
------------
-init                      : (re)initializies the workspace
-pull-series -r <remote>   : pulls latest trunks from a given remote
-push-series -r <remote>   : pushes series to a given remote
-cleanup [-f]              : removes old branches/checkouts
-
-Working with builds:
------------
-create-topic -t <topic>: creates a new topic
-create-build -t <topic> -v <variant> -s <series> [-- <CMAKE_ARGS>]
-make -t <topic> -v <variant> -s <series> [-- <TOOL_ARGS>]
-mtr -t <topic> -v <variant> -s <series> [-- <MTR_ARGS>]
-
-Working with installed builds:
------------
-install -t <topic> -v <variant> -s <series> -i <installation> [--init]
-run-mysqld -t <topic> -v <variant> -s <series> -i <installation> [--valgrind] [--massif] [--port=X] [-- <MYSQLD_ARGS>]
-exec-mysql -t <topic> -v <variant> -s <series> -i <installation> [-- <MYSQLD_ARGS>]
-exec-bash -t <topic> -v <variant> -s <series> -i <installation> [-- <MYSQLD_ARGS>]
-run-bash -t <topic> -v <variant> -s <series> -i <installation> [-- <MYSQLD_ARGS>]
-
-Other helpers:
------------
-reupmerge -t <topic>  : Modifies merge pointers in later branches, to the current commit in the lowest branch.
-
-Most of the time -t, -v, -s, -i args can be omitted if the command is executed from the correct folder.
-""")
+    print_help()
