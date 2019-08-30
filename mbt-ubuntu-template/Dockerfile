@@ -15,7 +15,7 @@ RUN DEBIAN_FRONTEND=noninteractive\
             libncurses5-dev libssl-dev libaio-dev libreadline-dev systemtap-sdt-dev libmecab-dev \
             zlib1g-dev libpam-dev libnuma-dev libwrap0-dev libldap2-dev libcurl4-openssl-dev \
             libprotobuf-dev protobuf-compiler \
-            curl subversion git xterm valgrind libjemalloc-dev libjemalloc1 \
+            curl subversion git xterm valgrind libjemalloc-dev libjemalloc1 rxvt-unicode \
             python3-mysql.connector python3 vim \
             eatmydata subunit python-mysqldb libjson-perl devscripts debconf debhelper fakeroot \
             lsb-release perl po-debconf psmisc dh-systemd libzstd-dev pkg-config libtirpc-dev
@@ -35,7 +35,7 @@ RUN DEBIAN_FRONTEND=noninteractive\
     apt-add-repository "deb http://apt.llvm.org/$ubuntuVersionName/ llvm-toolchain-$ubuntuVersionName-5.0 main" && \
     apt-add-repository "deb http://apt.llvm.org/$ubuntuVersionName/ llvm-toolchain-$ubuntuVersionName-6.0 main" && \
     apt-get update && \
-    apt-get install -y clang-4.0 clang-5.0 clang-6.0 lldb-5.0
+    apt-get install -y clang-4.0 clang-5.0 clang-6.0 lldb
 
 # FixUID
 RUN addgroup --gid 1000 docker && \
@@ -78,3 +78,4 @@ RUN mkdir /work/bin &&\
 
 ENTRYPOINT ["fixuid"]
 
+ENV MTR_TERM urxvt -title %title% -e
