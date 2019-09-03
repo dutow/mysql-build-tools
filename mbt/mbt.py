@@ -609,6 +609,46 @@ def reupmerge(param_handler, args):
         base_branch = next_branch
 
 
+def rebase(conf, param_handler, args):
+    param_handler.add_topic_arg()
+    param_handler.add_topic_arg()
+    param_handler.add_boolean_arg("gca")
+    ctx = param_handler.parse(args)
+
+    if ctx.gca:
+        # Convert existing topic branches to GCA
+        descending_series = conf.series[:]
+        descending_series.sort()
+        up_version = descending_series.pop()
+        while descending_series:
+            next_version = descending_series.pop()
+            print("Rebasing topic for " + next_version)
+
+            repo = git.Repo("topics/"+ctx.topic+"/"+next_version)
+
+            topic_branch = "ps-" + next_version + "-" + ctx.topic
+            topic_refs = repo.git.rev_list(topic_branch,
+                                           "^" + next_version,
+                                           "--first-parent",
+                                           "--topo-order").split('\n')
+            if len(topic_refs) > 1:
+                print(topic_refs)
+                # Supporting more commits would require some kind of
+                # error-handling/continuation stuff
+                print("Error: rebase assumes there's only one feature commit")
+                return
+
+            missing_refs = repo.git.rev_list(next_version,
+                                             "^" + up_version,
+                                             "--first-parent",
+                                             "--topo-order")
+            first_ref = missing_refs.split('\n')[-1]
+            up_version = first_ref
+            repo.git.reset("--hard", first_ref + "^")
+            if topic_refs[0] != '':
+                repo.git.cherry_pick(topic_refs[0])
+
+
 def print_help():
     # Print a usage message
     __location__ = os.path.realpath(os.path.join(os.getcwd(),
@@ -693,6 +733,10 @@ def mbt_command():
 
     if sys.argv[1] == "reupmerge":
         reupmerge(param_handler, sys.argv[2:])
+        return
+
+    if sys.argv[1] == "rebase":
+        rebase(conf, param_handler, sys.argv[2:])
         return
 
     print_help()
